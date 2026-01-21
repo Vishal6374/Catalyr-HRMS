@@ -22,7 +22,10 @@ export const config = {
     },
 
     cors: {
-        origin: process.env.CORS_ORIGIN || 'http://localhost:8080',
+        // Support multiple origins separated by comma
+        origin: process.env.CORS_ORIGIN
+            ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+            : 'http://localhost:8080',
     },
 
     api: {
