@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Lock, Mail, AlertCircle, Building2 } from 'lucide-react';
+import { Lock, Mail, AlertCircle } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -35,10 +35,8 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted p-4">
       <div className="w-full max-w-md">
         <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shadow-lg">
-            <Building2 className="w-6 h-6 text-primary-foreground" />
-          </div>
-          <div><h1 className="text-2xl font-bold text-foreground">HRMS</h1><p className="text-sm text-muted-foreground">Human Resource Management</p></div>
+          <img src="/favicon.png" alt="Catalyr Logo" className="w-12 h-12 object-contain" />
+          <div><h1 className="text-2xl font-bold text-foreground">Catalyr</h1><p className="text-sm text-muted-foreground">Human Resource Management</p></div>
         </div>
         <Card className="border-0 shadow-xl">
           <CardHeader className="space-y-1 pb-4">

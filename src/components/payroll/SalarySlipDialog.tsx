@@ -9,6 +9,8 @@ import { Download, Printer } from "lucide-react";
 import { format } from "date-fns";
 import { SalarySlip } from "@/types/hrms";
 import { useAuth } from "@/contexts/AuthContext";
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 interface SalarySlipDialogProps {
     isOpen: boolean;
@@ -35,21 +37,68 @@ export function SalarySlipDialog({
 
     if (!slip) return null;
 
+    const handleDownload = async () => {
+        const element = document.getElementById('salary-slip');
+        if (!element) return;
+
+        try {
+            const canvas = await html2canvas(element, {
+                scale: 2, // Higher scale for better quality
+                useCORS: true,
+                backgroundColor: '#ffffff'
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`Salary_Slip_${slip.year}_${slip.month}.pdf`);
+        } catch (error) {
+            console.error('Failed to generate PDF:', error);
+        }
+    };
+
     const handlePrint = () => {
         window.print();
     };
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-3xl">
-                <DialogHeader>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto print:overflow-visible print:max-h-none print:max-w-none print:h-auto print:block">
+                <style>{`
+                    @media print {
+                        body * {
+                            visibility: hidden;
+                        }
+                        #salary-slip, #salary-slip * {
+                            visibility: visible;
+                        }
+                        #salary-slip {
+                            position: absolute;
+                            left: 0;
+                            top: 0;
+                            width: 100% !important;
+                            margin: 0 !important;
+                            padding: 20px !important;
+                            border: none !important;
+                            box-shadow: none !important;
+                            background: white !important;
+                            z-index: 9999;
+                        }
+                        /* Hide everything else */
+                        .animate-fade-in { display: none; }
+                    }
+                `}</style>
+                <DialogHeader className="print:hidden">
                     <DialogTitle>Salary Slip Preview</DialogTitle>
                 </DialogHeader>
 
                 <div className="p-6 bg-white text-black border rounded-lg shadow-sm print:shadow-none print:border-none" id="salary-slip">
                     {/* Header */}
                     <div className="text-center mb-8 border-b pb-4">
-                        <h1 className="text-2xl font-bold uppercase tracking-wider">HR Harmony Inc.</h1>
+                        <h1 className="text-2xl font-bold uppercase tracking-wider">Catalyr HRMS</h1>
                         <p className="text-sm text-gray-500">123 Business Park, Tech City, TC 90210</p>
                         <p className="text-sm font-medium mt-2">Salary Slip for {format(new Date(slip.year, slip.month - 1), 'MMMM yyyy')}</p>
                     </div>
@@ -93,23 +142,23 @@ export function SalarySlipDialog({
                             <div className="border-r">
                                 <div className="flex justify-between p-2 border-b border-dashed">
                                     <span>Basic Salary</span>
-                                    <span>{slip.basic_salary.toLocaleString()}</span>
+                                    <span>{Number(slip.basic_salary || 0).toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between p-2 border-b border-dashed">
                                     <span>HRA</span>
-                                    <span>{slip.hra.toLocaleString()}</span>
+                                    <span>{Number(slip.hra || 0).toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between p-2 border-b border-dashed">
                                     <span>Special Allowance</span>
-                                    <span>{slip.da.toLocaleString()}</span>
+                                    <span>{Number(slip.da || 0).toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between p-2 border-b border-dashed">
                                     <span>Reimbursements</span>
-                                    <span>{slip.reimbursements.toLocaleString()}</span>
+                                    <span>{Number(slip.reimbursements || 0).toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between p-2 bg-gray-50 font-bold mt-4">
                                     <span>Total Earnings</span>
-                                    <span>{slip.gross_salary.toLocaleString()}</span>
+                                    <span>{Number(slip.gross_salary || 0).toLocaleString()}</span>
                                 </div>
                             </div>
 
@@ -117,23 +166,23 @@ export function SalarySlipDialog({
                             <div>
                                 <div className="flex justify-between p-2 border-b border-dashed">
                                     <span>Provident Fund</span>
-                                    <span>{slip.deductions.pf.toLocaleString()}</span>
+                                    <span>{Number(slip.deductions?.pf || 0).toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between p-2 border-b border-dashed">
                                     <span>Professional Tax</span>
-                                    <span>{slip.deductions.tax.toLocaleString()}</span>
+                                    <span>{Number(slip.deductions?.tax || 0).toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between p-2 border-b border-dashed">
                                     <span>Loss of Pay</span>
-                                    <span>{slip.deductions.loss_of_pay.toLocaleString()}</span>
+                                    <span>{Number(slip.deductions?.loss_of_pay || 0).toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between p-2 border-b border-dashed">
                                     <span>Other Deductions</span>
-                                    <span>{slip.deductions.other.toLocaleString()}</span>
+                                    <span>{Number(slip.deductions?.other || 0).toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between p-2 bg-gray-50 font-bold mt-4">
                                     <span>Total Deductions</span>
-                                    <span>{(slip.deductions.pf + slip.deductions.tax + slip.deductions.loss_of_pay + slip.deductions.other).toLocaleString()}</span>
+                                    <span>{Number((slip.deductions?.pf || 0) + (slip.deductions?.tax || 0) + (slip.deductions?.loss_of_pay || 0) + (slip.deductions?.other || 0)).toLocaleString()}</span>
                                 </div>
                             </div>
                         </div>
@@ -148,7 +197,7 @@ export function SalarySlipDialog({
                             </p>
                         </div>
                         <div className="text-2xl font-bold text-primary">
-                            ${slip.net_salary.toLocaleString()}
+                            ₹{Number(slip.net_salary || 0).toLocaleString()}
                         </div>
                     </div>
 
@@ -162,7 +211,7 @@ export function SalarySlipDialog({
                         <Printer className="w-4 h-4 mr-2" />
                         Print
                     </Button>
-                    <Button>
+                    <Button onClick={handleDownload}>
                         <Download className="w-4 h-4 mr-2" />
                         Download PDF
                     </Button>

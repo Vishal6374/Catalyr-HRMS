@@ -107,7 +107,23 @@ export default function Payroll() {
               <CheckCircle2 className="w-3 h-3 mr-1" />Mark Paid
             </Button>
           )}
-          {batch.status === 'paid' && <Button size="sm" variant="outline"><Download className="w-3 h-3 mr-1" />Export</Button>}
+          {batch.status === 'paid' && (
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => {
+                const element = document.createElement('a');
+                element.href = `/payroll/export/${batch.id}`;
+                element.download = `payroll-${batch.id}.csv`;
+                document.body.appendChild(element);
+                element.click();
+                document.body.removeChild(element);
+              }}
+            >
+              <Download className="w-3 h-3 mr-1" />
+              Export
+            </Button>
+          )}
         </div>
       ),
     },

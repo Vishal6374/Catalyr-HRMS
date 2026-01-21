@@ -6,7 +6,7 @@ import { useSearchParams } from 'react-router-dom';
 
 // Import all payroll sub-pages
 import PayrollDashboard from './payroll/PayrollDashboard';
-import SalaryStructureConfig from './payroll/SalaryStructureConfig';
+import EmployeeSalaryManager from './payroll/EmployeeSalaryManager';
 import RunPayrollWizard from './payroll/RunPayrollWizard';
 import TaxWorksheet from './payroll/TaxWorksheet';
 import InvestmentDeclaration from './payroll/InvestmentDeclaration';
@@ -39,7 +39,7 @@ export default function PayrollUnified() {
                                 <>
                                     <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
                                     <TabsTrigger value="run-payroll">Run Payroll</TabsTrigger>
-                                    <TabsTrigger value="salary-structure">Salary Structure</TabsTrigger>
+                                    <TabsTrigger value="fixed-salary">Fixed Salary</TabsTrigger>
                                     <TabsTrigger value="salary-register">Salary Register</TabsTrigger>
                                     <TabsTrigger value="loan-advance">Loan/Advance</TabsTrigger>
                                 </>
@@ -64,8 +64,8 @@ export default function PayrollUnified() {
                                 <RunPayrollWizard />
                             </TabsContent>
 
-                            <TabsContent value="salary-structure" className="mt-6">
-                                <SalaryStructureConfig />
+                            <TabsContent value="fixed-salary" className="mt-6">
+                                <EmployeeSalaryManager />
                             </TabsContent>
 
                             <TabsContent value="salary-register" className="mt-6">

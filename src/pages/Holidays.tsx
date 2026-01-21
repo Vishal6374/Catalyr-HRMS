@@ -11,7 +11,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Calendar, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
-import { Navigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { holidayService } from '@/services/apiService';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -25,8 +24,6 @@ export default function Holidays() {
   const [formData, setFormData] = useState({ name: '', date: '', type: 'national', is_optional: false });
 
   const queryClient = useQueryClient();
-
-  if (!isHR) return <Navigate to="/dashboard" replace />;
 
   const { data: holidays = [], isLoading } = useQuery({
     queryKey: ['holidays', selectedYear],
@@ -103,6 +100,7 @@ export default function Holidays() {
     }
   };
 
+  // Define columns based on user role
   const columns: Column<any>[] = [
     {
       key: 'name',
@@ -126,7 +124,7 @@ export default function Holidays() {
       key: 'type',
       header: 'Type',
       cell: (holiday) => (
-        <StatusBadge status={holiday.type === 'national' ? 'active' : 'inactive'} label={holiday.type} />
+        <StatusBadge status={holiday.type} variant={holiday.type === 'national' ? 'success' : 'info'} />
       ),
     },
     {
@@ -136,7 +134,11 @@ export default function Holidays() {
         <span className="text-sm">{holiday.is_optional ? 'Yes' : 'No'}</span>
       ),
     },
-    {
+  ];
+
+  // Add actions column only for HR
+  if (isHR) {
+    columns.push({
       key: 'actions',
       header: '',
       cell: (holiday) => (
@@ -155,8 +157,8 @@ export default function Holidays() {
         </div>
       ),
       className: 'w-[100px]',
-    },
-  ];
+    });
+  }
 
   if (isLoading) {
     return (
@@ -171,11 +173,16 @@ export default function Holidays() {
   return (
     <MainLayout>
       <div className="space-y-6 animate-fade-in">
-        <PageHeader title="Holidays" description="Manage company holidays">
-          <Button onClick={openCreateDialog}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Holiday
-          </Button>
+        <PageHeader
+          title="Holidays"
+          description={isHR ? "Manage company holidays" : "View company holidays"}
+        >
+          {isHR && (
+            <Button onClick={openCreateDialog}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Holiday
+            </Button>
+          )}
         </PageHeader>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -216,73 +223,75 @@ export default function Holidays() {
           emptyMessage="No holidays found"
         />
 
-        {/* Create/Edit Dialog */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{selectedHoliday ? 'Edit Holiday' : 'Add Holiday'}</DialogTitle>
-              <DialogDescription>
-                {selectedHoliday ? 'Update holiday details.' : 'Add a new holiday to the calendar.'}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Holiday Name</Label>
-                <Input
-                  id="title"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. New Year's Day"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="date">Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="type">Type</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(value) => setFormData({ ...formData, type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="national">National</SelectItem>
-                    <SelectItem value="regional">Regional</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="optional"
-                  checked={formData.is_optional}
-                  onCheckedChange={(checked) => setFormData({ ...formData, is_optional: !!checked })}
-                />
-                <Label htmlFor="optional" className="text-sm font-normal">
-                  Mark as Optional Holiday
-                </Label>
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                  {createMutation.isPending || updateMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : null}
-                  {selectedHoliday ? 'Update' : 'Create'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        {/* Create/Edit Dialog - HR Only */}
+        {isHR && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{selectedHoliday ? 'Edit Holiday' : 'Add Holiday'}</DialogTitle>
+                <DialogDescription>
+                  {selectedHoliday ? 'Update holiday details.' : 'Add a new holiday to the calendar.'}
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Holiday Name</Label>
+                  <Input
+                    id="title"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="e.g. New Year's Day"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="date">Date</Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="type">Type</Label>
+                  <Select
+                    value={formData.type}
+                    onValueChange={(value) => setFormData({ ...formData, type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="national">National</SelectItem>
+                      <SelectItem value="regional">Regional</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="optional"
+                    checked={formData.is_optional}
+                    onCheckedChange={(checked) => setFormData({ ...formData, is_optional: !!checked })}
+                  />
+                  <Label htmlFor="optional" className="text-sm font-normal">
+                    Mark as Optional Holiday
+                  </Label>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                  <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                    {createMutation.isPending || updateMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : null}
+                    {selectedHoliday ? 'Update' : 'Create'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </MainLayout>
   );

@@ -131,6 +131,7 @@ export const updateEmployee = async (req: AuthRequest, res: Response): Promise<v
         status,
         address,
         avatar_url,
+        salary,
     } = req.body;
 
     const employee = await User.findByPk(id);
@@ -149,6 +150,7 @@ export const updateEmployee = async (req: AuthRequest, res: Response): Promise<v
     if (status !== undefined) employee.status = status;
     if (address !== undefined) employee.address = address;
     if (avatar_url !== undefined) employee.avatar_url = avatar_url;
+    if (salary !== undefined) employee.salary = salary;
 
     await employee.save();
 

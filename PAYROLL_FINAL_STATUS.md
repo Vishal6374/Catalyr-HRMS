@@ -55,7 +55,7 @@ The backend server is attempting to start. There may be a database table creatio
    ```
    ✅ Database connection established successfully.
    ✅ Database synchronized (safe mode).
-   🚀 HR Harmony Backend Server
+   🚀 HRMS Backend Server
    ```
 
 2. If you see errors, they're likely related to:

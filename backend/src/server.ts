@@ -17,7 +17,7 @@ const startServer = async () => {
             console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║                                                            ║
-║   🚀 HR Harmony Backend Server                            ║
+║   🚀 HRMS Backend Server                            ║
 ║                                                            ║
 ║   Environment: ${config.env.padEnd(43)}║
 ║   Port:        ${config.port.toString().padEnd(43)}║

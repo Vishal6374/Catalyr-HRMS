@@ -229,3 +229,23 @@ export const holidayService = {
     delete: (id: string) =>
         api.delete(`/holidays/${id}`),
 };
+
+// Employee Document Services
+export const employeeDocumentService = {
+    getDocuments: (employeeId: string) =>
+        api.get(`/employees/${employeeId}/documents`),
+    uploadDocument: (employeeId: string, file: File, documentType: string) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('documentType', documentType);
+        return api.post(`/employees/${employeeId}/documents`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+    },
+    getDocument: (documentId: string) =>
+        api.get(`/employees/documents/${documentId}`),
+    deleteDocument: (documentId: string) =>
+        api.delete(`/employees/documents/${documentId}`),
+};

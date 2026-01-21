@@ -2,7 +2,7 @@
 
 ## 🚀 What's Been Done
 
-I've successfully updated your HR Harmony payroll module with a comprehensive system that includes:
+I've successfully updated your HRMS payroll module with a comprehensive system that includes:
 
 ### ✅ Backend (100% Complete)
 - **7 New Database Models**: SalaryStructure, PayGroup, TaxSlab, InvestmentDeclaration, LoanAdvance, FFSettlement, PayrollAudit

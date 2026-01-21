@@ -15,7 +15,7 @@ The backend server has successfully started!
 ```
 ✅ Database connection established successfully.
 ⚠️  Database sync skipped - tables must exist or be created manually
-🚀 HR Harmony Backend Server
+🚀 HRMS Backend Server
    Port: 5000
    API: http://localhost:5000/api
 ```

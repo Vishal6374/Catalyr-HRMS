@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,9 +10,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { employeeService } from '@/services/apiService';
+import { employeeService, employeeDocumentService } from '@/services/apiService';
 import { toast } from 'sonner';
 import {
   User,
@@ -27,23 +29,45 @@ import {
   FileText,
   Save,
   Camera,
-  Loader2
+  Loader2,
+  Download,
+  Trash2,
+  Eye,
+  X
 } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function Profile() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<any>(null);
   const [formData, setFormData] = useState({
     phone: '',
     address: '',
+  });
+  const [uploadData, setUploadData] = useState({
+    documentType: '',
+    fileName: '',
+    file: null as File | null,
   });
 
   const { data: employee, isLoading } = useQuery({
     queryKey: ['profile', user?.id],
     queryFn: async () => {
       const { data } = await employeeService.getById(user?.id as string);
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  const { data: documents = [], isLoading: docsLoading } = useQuery({
+    queryKey: ['documents', user?.id],
+    queryFn: async () => {
+      const { data } = await employeeDocumentService.getDocuments(user?.id as string);
       return data;
     },
     enabled: !!user?.id,
@@ -70,8 +94,68 @@ export default function Profile() {
     }
   });
 
+  const uploadMutation = useMutation({
+    mutationFn: (data: any) => {
+      if (!uploadData.file) throw new Error('No file selected');
+      return employeeDocumentService.uploadDocument(user?.id as string, uploadData.file, uploadData.documentType);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents', user?.id] });
+      toast.success('Document uploaded successfully');
+      setIsUploadDialogOpen(false);
+      setUploadData({ documentType: '', fileName: '', file: null });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to upload document');
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (documentId: string) => employeeDocumentService.deleteDocument(documentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents', user?.id] });
+      toast.success('Document deleted successfully');
+      setIsDeleteDialogOpen(false);
+      setSelectedDocument(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete document');
+    }
+  });
+
   const handleSave = () => {
     updateMutation.mutate(formData);
+  };
+
+  const getBackendUrl = (fileUrl: string): string => {
+    // If already a full URL, use it as-is
+    if (fileUrl.startsWith('http')) {
+      return fileUrl;
+    }
+    // Extract base URL from API URL (remove /api suffix)
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const baseUrl = apiUrl.replace('/api', '');
+    return `${baseUrl}${fileUrl}`;
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadData({
+        documentType: uploadData.documentType,
+        fileName: file.name,
+        file: file,
+      });
+    }
+  };
+
+  const handleUploadDocument = () => {
+    if (!uploadData.documentType || !uploadData.file) {
+      toast.error('Please select document type and file');
+      return;
+    }
+    uploadMutation.mutate({});
   };
 
   if (isLoading) {
@@ -301,39 +385,167 @@ export default function Profile() {
           {/* Documents */}
           <TabsContent value="documents">
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">My Documents</CardTitle>
+                <Button size="sm" onClick={() => setIsUploadDialogOpen(true)}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Document
+                </Button>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Document Cards - You might want to fetch these from an API too eventually */}
-                  <div className="p-4 rounded-lg border flex items-center gap-4 hover:bg-muted/50 transition-colors">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <FileText className="w-6 h-6 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">Offer Letter</p>
-                      <p className="text-sm text-muted-foreground">Uploaded {employee.created_at ? format(new Date(employee.created_at), 'MMM d, yyyy') : 'N/A'}</p>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      View
-                    </Button>
+                {docsLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
                   </div>
-                  {/* ... other static document cards or dynamic ones */}
-
-                  {/* Upload New Document */}
-                  <div className="p-4 rounded-lg border-2 border-dashed flex items-center justify-center hover:border-primary/50 transition-colors cursor-pointer">
-                    <div className="text-center">
-                      <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-sm font-medium">Upload Document</p>
-                      <p className="text-xs text-muted-foreground">PDF, PNG, JPG up to 10MB</p>
-                    </div>
+                ) : documents.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {documents.map((doc: any) => (
+                      <div key={doc.id} className="p-4 rounded-lg border flex items-center justify-between hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <FileText className="w-6 h-6 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{doc.document_type}</p>
+                            <p className="text-sm text-muted-foreground truncate">{doc.file_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {doc.created_at && !isNaN(new Date(doc.created_at).getTime()) 
+                                ? format(new Date(doc.created_at), 'MMM d, yyyy') 
+                                : 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 ml-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => window.open(getBackendUrl(doc.file_url), '_blank')}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedDocument(doc);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-2 opacity-50" />
+                    <p className="text-muted-foreground">No documents uploaded yet</p>
+                    <p className="text-sm text-muted-foreground mt-1">Upload your first document to get started</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Upload Document Dialog */}
+        <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Upload Document</DialogTitle>
+              <p className="text-sm text-muted-foreground mt-2">Upload and organize your important documents</p>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="documentType">Document Type</Label>
+                <Input
+                  id="documentType"
+                  placeholder="e.g., Passport, Driving License, Certification"
+                  value={uploadData.documentType}
+                  onChange={(e) => setUploadData({ ...uploadData, documentType: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="file">Select File</Label>
+                <div className="border-2 border-dashed rounded-lg p-4 cursor-pointer hover:border-primary/50 transition-colors">
+                  <input
+                    ref={fileInputRef}
+                    id="file"
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                    onChange={handleFileSelect}
+                  />
+                  <div
+                    className="text-center"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                    {uploadData.fileName ? (
+                      <>
+                        <p className="text-sm font-medium">{uploadData.fileName}</p>
+                        <p className="text-xs text-muted-foreground">Click to change file</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium">Click to upload or drag and drop</p>
+                        <p className="text-xs text-muted-foreground">PDF, PNG, JPG, DOC up to 10MB</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsUploadDialogOpen(false);
+                  setUploadData({ documentType: '', fileName: '', file: null });
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUploadDocument}
+                disabled={uploadMutation.isPending}
+              >
+                {uploadMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Upload
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Document Dialog */}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Document</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{selectedDocument?.document_type}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="flex justify-end gap-2 mt-6">
+              <AlertDialogCancel onClick={() => setIsDeleteDialogOpen(false)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (selectedDocument) {
+                    deleteMutation.mutate(selectedDocument.id);
+                  }
+                }}
+                className="bg-destructive hover:bg-destructive/90"
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Delete
+              </AlertDialogAction>
+            </div>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </MainLayout>
   );

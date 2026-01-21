@@ -25,6 +25,10 @@ export const config = {
         origin: process.env.CORS_ORIGIN || 'http://localhost:8080',
     },
 
+    api: {
+        baseUrl: process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 5000}`,
+    },
+
     upload: {
         maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '5242880', 10), // 5MB
         uploadDir: process.env.UPLOAD_DIR || 'uploads',

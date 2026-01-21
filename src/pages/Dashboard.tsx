@@ -2,9 +2,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, CalendarCheck, Clock, MessageSquareWarning, Wallet, UserCheck, TrendingUp, PieChart as PieChartIcon } from 'lucide-react';
+import { Users, CalendarCheck, Clock, MessageSquareWarning, Wallet, UserCheck, TrendingUp, PieChart as PieChartIcon, Calendar } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { dashboardService, attendanceService, leaveService, payrollService, reimbursementService, departmentService, employeeService } from '@/services/apiService';
+import { dashboardService, attendanceService, leaveService, payrollService, reimbursementService, departmentService, employeeService, holidayService } from '@/services/apiService';
 import {
   LineChart,
   Line,
@@ -22,7 +22,7 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
-import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { format, subDays, startOfMonth, endOfMonth, isAfter } from 'date-fns';
 
 export default function Dashboard() {
   const { isHR, user } = useAuth();
@@ -113,6 +113,28 @@ export default function Dashboard() {
       return data;
     },
     enabled: !isHR && !!user?.id,
+  });
+
+  // Upcoming Holidays Query
+  const { data: upcomingHolidays = [] } = useQuery({
+    queryKey: ['upcoming-holidays'],
+    queryFn: async () => {
+      const { data } = await holidayService.getAll();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Handle both array and object responses
+      const holidaysList = Array.isArray(data) ? data : (data.holidays || []);
+      
+      return holidaysList
+        .filter((holiday: any) => {
+          const holidayDate = new Date(holiday.date);
+          holidayDate.setHours(0, 0, 0, 0);
+          return holidayDate >= today;
+        })
+        .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .slice(0, 5);
+    },
   });
 
   // Process HR data for charts
@@ -271,6 +293,37 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Upcoming Holidays */}
+              {upcomingHolidays.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Upcoming Holidays
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {upcomingHolidays.map((holiday: any, index: number) => (
+                        <div key={index} className="flex items-start justify-between p-3 rounded-lg bg-muted/50 border border-border/50">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{holiday.name}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {format(new Date(holiday.date), 'EEE, MMM dd, yyyy')}
+                            </p>
+                          </div>
+                          {holiday.type && (
+                            <span className="text-xs px-2 py-1 rounded bg-primary/10 text-primary ml-2 whitespace-nowrap">
+                              {holiday.type}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -413,6 +466,37 @@ export default function Dashboard() {
                         />
                       </PieChart>
                     </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Upcoming Holidays */}
+              {upcomingHolidays.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Upcoming Holidays
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {upcomingHolidays.map((holiday: any, index: number) => (
+                        <div key={index} className="flex items-start justify-between p-3 rounded-lg bg-muted/50 border border-border/50">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{holiday.name}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {format(new Date(holiday.date), 'EEE, MMM dd, yyyy')}
+                            </p>
+                          </div>
+                          {holiday.type && (
+                            <span className="text-xs px-2 py-1 rounded bg-primary/10 text-primary ml-2 whitespace-nowrap">
+                              {holiday.type}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </CardContent>
                 </Card>
               )}

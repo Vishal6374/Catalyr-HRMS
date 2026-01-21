@@ -1,7 +1,7 @@
-# HR Harmony - Bug Analysis & Flaws Report
+# HRMS - Bug Analysis & Flaws Report
 
 ## Executive Summary
-The HR Harmony HRMS application has several critical bugs, security vulnerabilities, and design flaws that need to be addressed. This document identifies 20+ issues across the frontend and backend.
+The HRMS application has several critical bugs, security vulnerabilities, and design flaws that need to be addressed. This document identifies 20+ issues across the frontend and backend.
 
 ---
 

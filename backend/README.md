@@ -1,6 +1,6 @@
-# HR Harmony Backend
+# HRMS Backend
 
-Backend API for HR Harmony HRMS built with Node.js, Express, TypeScript, MySQL, and Sequelize.
+Backend API for HRMS built with Node.js, Express, TypeScript, MySQL, and Sequelize.
 
 ## Features
 

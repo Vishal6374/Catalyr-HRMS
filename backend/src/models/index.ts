@@ -11,6 +11,7 @@ import Complaint from './Complaint';
 import Policy from './Policy';
 import Holiday from './Holiday';
 import AuditLog from './AuditLog';
+import EmployeeDocument from './EmployeeDocument';
 // Temporarily disabled to debug server crash
 // import SalaryStructure from './SalaryStructure';
 // import PayGroup from './PayGroup';
@@ -106,6 +107,11 @@ FFSettlement.belongsTo(User, { foreignKey: 'processed_by', as: 'processor', cons
 PayrollAudit.belongsTo(User, { foreignKey: 'changed_by', as: 'changedBy', constraints: false });
 */
 
+// EmployeeDocument - User relationships
+EmployeeDocument.belongsTo(User, { foreignKey: 'employee_id', as: 'employee', constraints: false });
+User.hasMany(EmployeeDocument, { foreignKey: 'employee_id', as: 'documents', constraints: false });
+EmployeeDocument.belongsTo(User, { foreignKey: 'uploaded_by', as: 'uploader', constraints: false });
+
 export {
     User,
     Department,
@@ -120,6 +126,7 @@ export {
     Policy,
     Holiday,
     AuditLog,
+    EmployeeDocument,
     // Temporarily disabled
     // SalaryStructure,
     // PayGroup,
@@ -144,6 +151,7 @@ export default {
     Policy,
     Holiday,
     AuditLog,
+    EmployeeDocument,
     // Temporarily disabled
     // SalaryStructure,
     // PayGroup,

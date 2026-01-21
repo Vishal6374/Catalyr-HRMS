@@ -5,6 +5,8 @@ import Department from '../models/Department';
 import User from '../models/User';
 import { AppError } from '../middleware/errorHandler';
 
+import { sequelize } from '../config/database';
+
 export const getAllDepartments = async (req: AuthRequest, res: Response): Promise<void> => {
     const { search } = req.query;
 
@@ -19,10 +21,25 @@ export const getAllDepartments = async (req: AuthRequest, res: Response): Promis
 
     const departments = await Department.findAll({
         where,
+        attributes: {
+            include: [
+                [
+                    sequelize.literal(`(
+                        SELECT COUNT(*)
+                        FROM users
+                        WHERE
+                            users.department_id = Department.id
+                    )`),
+                    'employee_count'
+                ]
+            ]
+        },
         include: [
             { association: 'manager', attributes: ['id', 'name', 'email'] },
         ],
         order: [['created_at', 'DESC']],
+        raw: true,
+        subQuery: false,
     });
 
     res.json(departments);

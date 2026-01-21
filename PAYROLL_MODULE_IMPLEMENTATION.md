@@ -1,7 +1,7 @@
 # Payroll Module - Complete Implementation
 
 ## Overview
-This document outlines the comprehensive payroll module implementation for HR Harmony HRMS system, including all HR/Admin and Employee pages as requested.
+This document outlines the comprehensive payroll module implementation for HRMS system, including all HR/Admin and Employee pages as requested.
 
 ## Backend Models Created
 
