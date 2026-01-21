@@ -236,7 +236,7 @@ export default function PayrollDashboard() {
             </div>
 
             {/* Quick Actions */}
-            <Card>
+            {/* <Card>
                 <CardHeader>
                     <CardTitle>Quick Actions</CardTitle>
                 </CardHeader>
@@ -258,7 +258,7 @@ export default function PayrollDashboard() {
                         ))}
                     </div>
                 </CardContent>
-            </Card>
+            </Card> */}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Upcoming Payouts */}

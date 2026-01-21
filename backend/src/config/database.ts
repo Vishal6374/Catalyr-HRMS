@@ -34,11 +34,13 @@ export const testConnection = async (): Promise<void> => {
     }
 };
 
-export const syncDatabase = async (force = false): Promise<void> => {
+export const syncDatabase = async (force = false, alter = false): Promise<void> => {
     try {
-        // Only create new tables, don't alter existing ones
-        await sequelize.sync({ force });
-        console.log(`✅ Database synchronized ${force ? '(force mode)' : '(safe mode)'}.`);
+        // force: drops and recreates tables (data loss)
+        // alter: updates existing tables to match models (safer)
+        await sequelize.sync({ force, alter });
+        const mode = force ? '(force mode - tables recreated)' : alter ? '(alter mode - tables updated)' : '(safe mode)';
+        console.log(`✅ Database synchronized ${mode}.`);
     } catch (error) {
         console.error('❌ Database synchronization failed:', error);
         throw error;

@@ -8,9 +8,9 @@ const startServer = async () => {
         // Test database connection
         await testConnection();
 
-        // Temporarily skip database sync due to ALTER TABLE issues
-        // await syncDatabase(false); // Set to true to drop and recreate tables
-        console.log('⚠️  Database sync skipped - tables must exist or be created manually');
+        // Sync database with alter mode (updates tables safely without data loss)
+        await syncDatabase(false, true); // force=false, alter=true
+        console.log('✅ Database sync completed successfully');
 
         // Start server
         app.listen(config.port, () => {

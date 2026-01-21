@@ -191,7 +191,7 @@ export default function InvestmentDeclaration() {
     ];
 
     return (
-        <MainLayout>
+   
             <div className="space-y-6 animate-fade-in">
                 <PageHeader
                     title="Investment Declaration"
@@ -429,6 +429,6 @@ export default function InvestmentDeclaration() {
                     </DialogContent>
                 </Dialog>
             </div>
-        </MainLayout>
+   
     );
 }

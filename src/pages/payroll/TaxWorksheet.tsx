@@ -53,7 +53,7 @@ export default function TaxWorksheet() {
     ] : [];
 
     return (
-        <MainLayout>
+     
             <div className="space-y-6 animate-fade-in">
                 <PageHeader
                     title="Tax Worksheet"
@@ -248,6 +248,6 @@ export default function TaxWorksheet() {
                     </>
                 )}
             </div>
-        </MainLayout>
+
     );
 }

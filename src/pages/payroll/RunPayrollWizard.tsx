@@ -110,7 +110,7 @@ export default function RunPayrollWizard() {
     const selectedEmployeeData = activeEmployees.filter((e: any) => selectedEmployees.includes(e.id));
 
     return (
-        <MainLayout>
+       
             <div className="space-y-6 animate-fade-in">
                 <PageHeader
                     title="Run Payroll Wizard"
@@ -405,6 +405,6 @@ export default function RunPayrollWizard() {
                     )}
                 </div>
             </div>
-        </MainLayout>
+       
     );
 }

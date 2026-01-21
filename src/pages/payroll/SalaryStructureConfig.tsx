@@ -198,7 +198,7 @@ export default function SalaryStructureConfig() {
     ];
 
     return (
-        <MainLayout>
+        
             <div className="space-y-6 animate-fade-in">
                 <PageHeader
                     title="Salary Structure Configuration"
@@ -357,6 +357,6 @@ export default function SalaryStructureConfig() {
                     </DialogContent>
                 </Dialog>
             </div>
-        </MainLayout>
+   
     );
 }

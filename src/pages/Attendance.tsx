@@ -1,43 +1,49 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { Search, CalendarCheck, Clock, UserCheck, UserX } from 'lucide-react';
-import { format, isSameDay, eachDayOfInterval, startOfMonth, endOfMonth, isWeekend, isBefore, startOfDay, isWithinInterval } from 'date-fns';
+import { CalendarCheck, Clock, UserCheck, UserX } from 'lucide-react';
+import { format, isSameDay, eachDayOfInterval, startOfMonth, endOfMonth, isWeekend, isBefore, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
-import { attendanceService, employeeService, leaveService, holidayService } from '@/services/apiService';
+import { attendanceService, employeeService, holidayService } from '@/services/apiService';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export default function Attendance() {
   const { isHR, user } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
-  const [selectedEmployee, setSelectedEmployee] = useState<string>(isHR ? 'all' : user?.id || '');
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Update clock every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const [year, month] = selectedMonth.split('-').map(Number);
   const monthStart = startOfMonth(new Date(year, month - 1));
   const monthEnd = endOfMonth(new Date(year, month - 1));
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
-
   const today = new Date();
 
-  // Fetch attendance logs for the selected month
+  // Fetch attendance logs
   const { data: logs = [], isLoading: logsLoading } = useQuery({
-    queryKey: ['attendance', selectedMonth, selectedEmployee],
+    queryKey: ['attendance', selectedMonth],
     queryFn: async () => {
       const startDate = monthStart.toISOString().split('T')[0];
       const endDate = monthEnd.toISOString().split('T')[0];
-
       const { data } = await attendanceService.getLogs({
-        employee_id: selectedEmployee !== 'all' ? selectedEmployee : undefined,
+        employee_id: isHR ? undefined : user?.id,
         start_date: startDate,
         end_date: endDate,
       });
@@ -59,16 +65,6 @@ export default function Attendance() {
     enabled: !isHR,
   });
 
-  // Fetch leave requests for pending status
-  const { data: leaveRequests = [] } = useQuery({
-    queryKey: ['leave-requests', user?.id],
-    queryFn: async () => {
-      const { data } = await leaveService.getRequests({ employee_id: user?.id });
-      return data;
-    },
-    enabled: !!user?.id
-  });
-
   // Fetch holidays
   const { data: holidays = [] } = useQuery({
     queryKey: ['holidays'],
@@ -78,7 +74,7 @@ export default function Attendance() {
     },
   });
 
-  // Fetch employees for HR dropdown
+  // Fetch employees for HR
   const { data: employees = [] } = useQuery({
     queryKey: ['employees'],
     queryFn: async () => {
@@ -88,16 +84,6 @@ export default function Attendance() {
     enabled: isHR,
   });
 
-  // Calculate today's stats for HR
-  const todayLogs = logs.filter((log: any) => isSameDay(new Date(log.date), today));
-  const presentToday = todayLogs.filter((log: any) => log.status === 'present').length;
-  const absentToday = todayLogs.filter((log: any) => log.status === 'absent').length;
-
-  // Use summary data for employee view
-  const myPresentDays = summary?.present || 0;
-  const myAbsentDays = summary?.absent || 0;
-
-  // ... inside component ...
   const queryClient = useQueryClient();
 
   const markAttendanceMutation = useMutation({
@@ -105,23 +91,46 @@ export default function Attendance() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
       queryClient.invalidateQueries({ queryKey: ['attendance-summary'] });
-      toast.success('Attendance marked successfully');
+      toast.success('Attendance updated successfully');
     },
     onError: (error: any) => {
-      console.error("Mark attendance error:", error);
-      toast.error(error.response?.data?.error || error.response?.data?.message || 'Failed to mark attendance');
+      toast.error(error.response?.data?.error || 'Failed to update attendance');
     },
   });
+
+  // Calculate stats
+  const todayLogs = logs.filter((log: any) => isSameDay(new Date(log.date), today));
+  const presentToday = todayLogs.filter((log: any) => log.status === 'present').length;
+  const absentToday = todayLogs.filter((log: any) => log.status === 'absent').length;
+  const myPresentDays = summary?.present || 0;
+  const myAbsentDays = summary?.absent || 0;
 
   const attendanceToday = logs.find((log: any) =>
     log.employee_id === user?.id && isSameDay(new Date(log.date), today)
   );
 
-  const getAttendanceForDate = (employeeId: string, date: Date) => {
-    return logs.find(
-      (log: any) => log.employee_id === employeeId && isSameDay(new Date(log.date), date)
-    );
+  const getAttendanceForDate = (date: Date) => {
+    return logs.filter((log: any) => isSameDay(new Date(log.date), date));
   };
+
+  const getStatusColor = (status: string | undefined) => {
+    switch (status) {
+      case 'present': return 'bg-green-500';
+      case 'absent': return 'bg-destructive';
+      case 'half_day': return 'bg-amber-500';
+      case 'on_leave': return 'bg-blue-500';
+      default: return 'bg-slate-200';
+    }
+  };
+
+  const handleDateClick = (date: Date) => {
+    if (isHR) {
+      setSelectedDate(date);
+      setIsModalOpen(true);
+    }
+  };
+
+  const selectedDateLogs = selectedDate ? getAttendanceForDate(selectedDate) : [];
 
   if (logsLoading) {
     return (
@@ -133,160 +142,98 @@ export default function Attendance() {
     );
   }
 
-  const getStatusColor = (status: string | undefined) => {
-    switch (status) {
-      case 'present': return 'bg-green-500 shadow-sm';
-      case 'absent': return 'bg-destructive shadow-sm';
-      case 'half_day': return 'bg-amber-500 shadow-sm';
-      case 'on_leave': return 'bg-blue-500 shadow-sm';
-      case 'weekend': return 'bg-slate-400';
-      default: return 'bg-slate-200';
-    }
-  };
-
   return (
     <MainLayout>
       <div className="space-y-6 animate-fade-in">
         <PageHeader
           title="Attendance"
-          description={isHR ? 'Track and manage employee attendance' : 'View your attendance records'}
+          description={isHR ? 'Track and manage employee attendance' : 'Clock in/out and view your attendance'}
         />
 
+        {/* Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {isHR ? (
             <>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                      <UserCheck className="w-5 h-5 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">{presentToday}</p>
-                      <p className="text-xs text-muted-foreground">Present Today</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
-                      <UserX className="w-5 h-5 text-destructive" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">{absentToday}</p>
-                      <p className="text-xs text-muted-foreground">Absent Today</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                      <CalendarCheck className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">{todayLogs.filter((log: any) => log.status === 'on_leave').length}</p>
-                      <p className="text-xs text-muted-foreground">On Leave</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                      <Clock className="w-5 h-5 text-slate-600" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">{format(new Date(), 'HH:mm')}</p>
-                      <p className="text-xs text-muted-foreground">Current Time</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center"><UserCheck className="w-5 h-5 text-green-600" /></div><div><p className="text-2xl font-bold">{presentToday}</p><p className="text-xs text-muted-foreground">Present Today</p></div></div></CardContent></Card>
+              <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center"><UserX className="w-5 h-5 text-destructive" /></div><div><p className="text-2xl font-bold">{absentToday}</p><p className="text-xs text-muted-foreground">Absent Today</p></div></div></CardContent></Card>
+              <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center"><CalendarCheck className="w-5 h-5 text-blue-600" /></div><div><p className="text-2xl font-bold">{todayLogs.filter((log: any) => log.status === 'on_leave').length}</p><p className="text-xs text-muted-foreground">On Leave</p></div></div></CardContent></Card>
+              <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center"><Clock className="w-5 h-5 text-slate-600" /></div><div><p className="text-2xl font-bold">{format(currentTime, 'HH:mm')}</p><p className="text-xs text-muted-foreground">Current Time</p></div></div></CardContent></Card>
             </>
           ) : (
             <>
-              <Card className={cn("col-span-2 sm:col-span-1 border-l-4",
-                attendanceToday?.status === 'present' ? "border-l-green-500" : "border-l-primary"
-              )}>
-                <CardContent className="pt-4 flex flex-col justify-center h-full">
-                  {!attendanceToday ? (
-                    <Button
-                      className="w-full h-full min-h-[60px]"
-                      onClick={() => markAttendanceMutation.mutate({ status: 'present', date: format(new Date(), 'yyyy-MM-dd') })}
-                      disabled={markAttendanceMutation.isPending}
-                    >
-                      {markAttendanceMutation.isPending ? 'Marking...' : 'Mark Present'}
-                    </Button>
-                  ) : (
+              <Card className={cn("col-span-2 border-l-4 shadow-lg", attendanceToday?.status === 'present' ? "border-l-green-500 bg-gradient-to-br from-green-50 to-white" : "border-l-primary bg-gradient-to-br from-primary/5 to-white")}>
+                <CardContent className="pt-6">
+                  <div className="flex flex-col items-center gap-4">
                     <div className="text-center">
-                      <p className="text-lg font-bold capitalize text-success">
-                        {attendanceToday.status.replace('_', ' ')}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Marked for Today</p>
+                      <p className="text-4xl font-bold tracking-tight">{format(currentTime, 'HH:mm:ss')}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{format(currentTime, 'EEEE, MMMM d, yyyy')}</p>
                     </div>
-                  )}
+                    {attendanceToday ? (
+                      <div className="flex flex-col items-center gap-3 w-full">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+                          <p className="text-lg font-semibold text-green-600">Clocked In</p>
+                        </div>
+                        {attendanceToday.check_in && (
+                          <div className="text-center p-3 bg-white rounded-lg border w-full">
+                            <p className="text-xs text-muted-foreground">Clock In Time</p>
+                            <p className="text-xl font-bold text-green-600">{format(new Date(attendanceToday.check_in), 'HH:mm:ss')}</p>
+                          </div>
+                        )}
+                        {attendanceToday.check_out && (
+                          <div className="text-center p-3 bg-white rounded-lg border w-full">
+                            <p className="text-xs text-muted-foreground">Clock Out Time</p>
+                            <p className="text-xl font-bold text-red-600">{format(new Date(attendanceToday.check_out), 'HH:mm:ss')}</p>
+                          </div>
+                        )}
+                        {!attendanceToday.check_out && (
+                          <Button variant="destructive" className="w-full h-12" onClick={() => markAttendanceMutation.mutate({ status: 'present', date: format(new Date(), 'yyyy-MM-dd'), check_out: new Date().toISOString() })} disabled={markAttendanceMutation.isPending}>
+                            <Clock className="w-4 h-4 mr-2" />
+                            {markAttendanceMutation.isPending ? 'Processing...' : 'Clock Out'}
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-3 w-full">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-slate-400" />
+                          <p className="text-lg font-semibold text-muted-foreground">Not Clocked In</p>
+                        </div>
+                        <Button className="w-full h-12 text-lg" onClick={() => markAttendanceMutation.mutate({ status: 'present', date: format(new Date(), 'yyyy-MM-dd'), check_in: new Date().toISOString() })} disabled={markAttendanceMutation.isPending}>
+                          <UserCheck className="w-5 h-5 mr-2" />
+                          {markAttendanceMutation.isPending ? 'Clocking In...' : 'Clock In'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
-
-              <Card>
-                <CardContent className="pt-4">
-                  <p className="text-2xl font-bold text-success">{myPresentDays}</p>
-                  <p className="text-xs text-muted-foreground">Present Days</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <p className="text-2xl font-bold text-destructive">{myAbsentDays}</p>
-                  <p className="text-xs text-muted-foreground">Absent Days</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <p className="text-2xl font-bold">{Math.round((myPresentDays / (myPresentDays + myAbsentDays || 1)) * 100)}%</p>
-                  <p className="text-xs text-muted-foreground">Attendance Rate</p>
-                </CardContent>
-              </Card>
+              <Card><CardContent className="pt-4"><p className="text-2xl font-bold text-success">{myPresentDays}</p><p className="text-xs text-muted-foreground">Present Days</p></CardContent></Card>
+              <Card><CardContent className="pt-4"><p className="text-2xl font-bold text-destructive">{myAbsentDays}</p><p className="text-xs text-muted-foreground">Absent Days</p></CardContent></Card>
+              <Card><CardContent className="pt-4"><p className="text-2xl font-bold">{Math.round((myPresentDays / (myPresentDays + myAbsentDays || 1)) * 100)}%</p><p className="text-xs text-muted-foreground">Attendance Rate</p></CardContent></Card>
             </>
           )}
         </div>
 
-        {/* Today's Attendance - HR Only */}
+        {/* Today's Attendance - HR Only - Fixed Height with Scroll */}
         {isHR && (
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center justify-between">
                 <span>Today's Attendance - {format(today, 'dd MMM yyyy')}</span>
-                <span className="text-sm font-normal text-muted-foreground">
-                  {presentToday} Present / {employees.length} Total
-                </span>
+                <span className="text-sm font-normal text-muted-foreground">{presentToday} Present / {employees.length} Total</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
+              <div className="h-96 overflow-y-auto space-y-2 pr-2">
                 {employees.map((emp: any) => {
                   const empAttendance = todayLogs.find((log: any) => log.employee_id === emp.id);
                   const isPresent = empAttendance?.status === 'present';
                   const isAbsent = empAttendance?.status === 'absent';
                   const isOnLeave = empAttendance?.status === 'on_leave';
-                  const isHalfDay = empAttendance?.status === 'half_day';
 
                   return (
-                    <div
-                      key={emp.id}
-                      className={cn(
-                        "flex items-center justify-between p-3 rounded-lg border transition-colors",
-                        isPresent && "bg-green-50 border-green-200",
-                        isAbsent && "bg-red-50 border-red-200",
-                        isOnLeave && "bg-blue-50 border-blue-200",
-                        isHalfDay && "bg-amber-50 border-amber-200",
-                        !empAttendance && "bg-slate-50 border-slate-200"
-                      )}
-                    >
+                    <div key={emp.id} className={cn("flex items-center justify-between p-3 rounded-lg border", isPresent && "bg-green-50 border-green-200", isAbsent && "bg-red-50 border-red-200", isOnLeave && "bg-blue-50 border-blue-200", !empAttendance && "bg-slate-50 border-slate-200")}>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10">
                           <AvatarImage src={emp.avatar} />
@@ -294,77 +241,20 @@ export default function Attendance() {
                         </Avatar>
                         <div>
                           <p className="font-medium text-sm">{emp.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {emp.employee_id} • {emp.department?.name || 'N/A'}
-                          </p>
+                          <p className="text-xs text-muted-foreground">{emp.employee_id} • {emp.department?.name || 'N/A'}</p>
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
+                        {empAttendance && (
+                          <div className="text-right text-xs">
+                            {empAttendance.check_in && <p className="text-muted-foreground">In: <span className="font-semibold text-green-600">{format(new Date(empAttendance.check_in), 'HH:mm')}</span></p>}
+                            {empAttendance.check_out && <p className="text-muted-foreground">Out: <span className="font-semibold text-red-600">{format(new Date(empAttendance.check_out), 'HH:mm')}</span></p>}
+                          </div>
+                        )}
                         {empAttendance ? (
-                          <>
-                            <StatusBadge
-                              status={empAttendance.status}
-                              className="capitalize"
-                            />
-                            {empAttendance.check_in && (
-                              <span className="text-xs text-muted-foreground">
-                                {format(new Date(empAttendance.check_in), 'HH:mm')}
-                              </span>
-                            )}
-                            <Select
-                              value={empAttendance.status}
-                              onValueChange={(newStatus) => {
-                                markAttendanceMutation.mutate({
-                                  employee_id: emp.id,
-                                  status: newStatus,
-                                  date: format(today, 'yyyy-MM-dd'),
-                                });
-                              }}
-                            >
-                              <SelectTrigger className="w-32 h-8">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="present">Present</SelectItem>
-                                <SelectItem value="absent">Absent</SelectItem>
-                                <SelectItem value="half_day">Half Day</SelectItem>
-                                <SelectItem value="on_leave">On Leave</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </>
+                          <StatusBadge status={empAttendance.status} className="capitalize" />
                         ) : (
-                          <>
-                            <span className="text-xs text-muted-foreground">Not marked</span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                markAttendanceMutation.mutate({
-                                  employee_id: emp.id,
-                                  status: 'present',
-                                  date: format(today, 'yyyy-MM-dd'),
-                                });
-                              }}
-                              disabled={markAttendanceMutation.isPending}
-                            >
-                              Mark Present
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                markAttendanceMutation.mutate({
-                                  employee_id: emp.id,
-                                  status: 'absent',
-                                  date: format(today, 'yyyy-MM-dd'),
-                                });
-                              }}
-                              disabled={markAttendanceMutation.isPending}
-                            >
-                              Mark Absent
-                            </Button>
-                          </>
+                          <span className="text-xs text-muted-foreground px-3 py-1 bg-slate-100 rounded">Not Marked</span>
                         )}
                       </div>
                     </div>
@@ -375,26 +265,11 @@ export default function Attendance() {
           </Card>
         )}
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <Input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="w-[180px]" />
-          {isHR && (
-            <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Select employee" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Employees</SelectItem>
-                {employees.map((emp) => (
-                  <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-
+        {/* Calendar */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">{format(monthStart, 'MMMM yyyy')} Attendance</CardTitle>
+            <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="px-3 py-1 border rounded-md text-sm" />
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-7 gap-1 mb-2">
@@ -407,80 +282,83 @@ export default function Attendance() {
                 <div key={`empty-${i}`} className="aspect-square" />
               ))}
               {daysInMonth.map((date) => {
-                const employeeId = isHR && selectedEmployee !== 'all' ? selectedEmployee : user?.id || '';
-                const attendance = getAttendanceForDate(employeeId, date);
+                const dayLogs = getAttendanceForDate(date);
+                const userLog = dayLogs.find((log: any) => log.employee_id === user?.id);
                 const holiday = holidays.find((h: any) => isSameDay(new Date(h.date), date));
-                const isHoliday = !!holiday;
-
-                // Check for pending leaves
-                const pendingLeave = leaveRequests.find((req: any) =>
-                  req.status === 'pending' &&
-                  isWithinInterval(date, { start: new Date(req.start_date), end: new Date(req.end_date) })
-                );
-
-                const isPast = isBefore(date, startOfDay(new Date()));
-                // Implicit absent: Past date, no log, not weekend, not holiday, not currently applied for leave
-                const isImplicitAbsent = !attendance && isPast && !isHoliday && !isWeekend(date) && !pendingLeave;
+                const presentCount = dayLogs.filter((log: any) => log.status === 'present').length;
 
                 return (
                   <div
                     key={date.toISOString()}
+                    onClick={() => handleDateClick(date)}
                     className={cn(
-                      'aspect-square p-1 border rounded-lg flex flex-col items-center justify-center relative group',
+                      'aspect-square p-1 border rounded-lg flex flex-col items-center justify-center relative group transition-all',
+                      isHR && 'cursor-pointer hover:border-primary hover:shadow-md',
                       isWeekend(date) && 'bg-muted/50',
-                      isHoliday && 'bg-amber-50 border-amber-200',
-                      isImplicitAbsent && 'bg-destructive/5 border-destructive/20',
-                      pendingLeave && 'bg-blue-50 border-blue-200',
+                      holiday && 'bg-amber-50 border-amber-200',
                       isSameDay(date, today) && 'ring-2 ring-primary'
                     )}
-                    title={holiday?.name || (pendingLeave ? 'Leave Pending' : '')}
+                    title={holiday?.name || ''}
                   >
-                    <span className={cn(
-                      "text-xs font-medium",
-                      isHoliday && "text-amber-700",
-                      isImplicitAbsent && "text-destructive",
-                      pendingLeave && "text-blue-700"
-                    )}>{format(date, 'd')}</span>
-
-                    {attendance && (
-                      <div className={cn('w-2 h-2 rounded-full mt-1', getStatusColor(attendance.status))} />
-                    )}
-
-                    {isHoliday && !attendance && (
-                      <div className="w-2 h-2 rounded-full mt-1 bg-amber-500" />
-                    )}
-
-                    {isImplicitAbsent && (
-                      <div className="w-2 h-2 rounded-full mt-1 bg-destructive" title="Absent" />
-                    )}
-
-                    {pendingLeave && !attendance && (
-                      <div className="w-2 h-2 rounded-full mt-1 bg-blue-500" title="Pending Leave" />
-                    )}
-
-                    {/* Tooltips */}
-                    {(isHoliday || pendingLeave || isImplicitAbsent) && (
-                      <div className="absolute hidden group-hover:block bottom-full mb-1 z-10 px-2 py-1 text-xs text-white bg-black rounded whitespace-nowrap">
-                        {holiday?.name || (pendingLeave ? 'Leave Pending' : 'Absent')}
-                      </div>
+                    <span className={cn("text-xs font-medium", holiday && "text-amber-700")}>{format(date, 'd')}</span>
+                    {isHR ? (
+                      presentCount > 0 && <span className="text-[10px] text-green-600 font-semibold">{presentCount}</span>
+                    ) : (
+                      userLog && <div className={cn('w-2 h-2 rounded-full mt-1', getStatusColor(userLog.status))} />
                     )}
                   </div>
                 );
               })}
             </div>
             <div className="flex flex-wrap gap-4 mt-6 pt-4 border-t">
-              {['present', 'absent', 'half_day', 'on_leave', 'weekend'].map((status) => (
-                <div key={status} className="flex items-center gap-2">
-                  <div className={cn('w-3 h-3 rounded-full', getStatusColor(status))} />
-                  <span className="text-xs capitalize">{status.replace('_', ' ')}</span>
-                </div>
-              ))}
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-amber-500" /><span className="text-xs">Holiday</span></div>
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-blue-500" /><span className="text-xs">Pending Leave</span></div>
+              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500" /><span className="text-xs">Present</span></div>
               <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-destructive" /><span className="text-xs">Absent</span></div>
+              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-amber-500" /><span className="text-xs">Half Day</span></div>
+              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-blue-500" /><span className="text-xs">On Leave</span></div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Date Details Modal - HR Only */}
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Attendance for {selectedDate && format(selectedDate, 'MMMM d, yyyy')}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2 mt-4">
+              {employees.map((emp: any) => {
+                const empLog = selectedDateLogs.find((log: any) => log.employee_id === emp.id);
+                return (
+                  <div key={emp.id} className={cn("flex items-center justify-between p-3 rounded-lg border", empLog?.status === 'present' && "bg-green-50 border-green-200", empLog?.status === 'absent' && "bg-red-50 border-red-200", empLog?.status === 'on_leave' && "bg-blue-50 border-blue-200", !empLog && "bg-slate-50 border-slate-200")}>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={emp.avatar} />
+                        <AvatarFallback>{emp.name?.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium text-sm">{emp.name}</p>
+                        <p className="text-xs text-muted-foreground">{emp.employee_id}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {empLog && (
+                        <div className="text-right text-xs">
+                          {empLog.check_in && <p className="text-muted-foreground">In: <span className="font-semibold text-green-600">{format(new Date(empLog.check_in), 'HH:mm:ss')}</span></p>}
+                          {empLog.check_out && <p className="text-muted-foreground">Out: <span className="font-semibold text-red-600">{format(new Date(empLog.check_out), 'HH:mm:ss')}</span></p>}
+                        </div>
+                      )}
+                      {empLog ? (
+                        <StatusBadge status={empLog.status} className="capitalize" />
+                      ) : (
+                        <span className="text-xs text-muted-foreground px-3 py-1 bg-slate-100 rounded">Not Marked</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </MainLayout>
   );

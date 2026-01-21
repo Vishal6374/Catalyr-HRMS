@@ -112,7 +112,7 @@ export default function Reimbursements() {
     { key: 'category', header: 'Category', cell: (reimburse) => reimburse.category },
     { key: 'amount', header: 'Amount', cell: (reimburse) => `₹${reimburse.amount.toLocaleString()}` },
     { key: 'description', header: 'Description', cell: (reimburse) => <p className="text-sm text-muted-foreground truncate max-w-[200px]">{reimburse.description}</p> },
-    { key: 'date', header: 'Date', cell: (reimburse) => <span className="text-sm text-muted-foreground">{format(new Date(reimburse.date), 'MMM d, yyyy')}</span> },
+    { key: 'date', header: 'Date', cell: (reimburse) => <span className="text-sm text-muted-foreground">{reimburse.date ? format(new Date(reimburse.date), 'MMM d, yyyy') : '-'}</span> },
     { key: 'status', header: 'Status', cell: (reimburse) => <StatusBadge status={reimburse.status} /> },
     {
       key: 'actions',
@@ -153,7 +153,7 @@ export default function Reimbursements() {
     { key: 'category', header: 'Category', cell: (reimburse) => reimburse.category },
     { key: 'amount', header: 'Amount', cell: (reimburse) => `₹${reimburse.amount.toLocaleString()}` },
     { key: 'description', header: 'Description', cell: (reimburse) => <p className="text-sm text-muted-foreground truncate max-w-[200px]">{reimburse.description}</p> },
-    { key: 'date', header: 'Date', cell: (reimburse) => <span className="text-sm text-muted-foreground">{format(new Date(reimburse.date), 'MMM d, yyyy')}</span> },
+    { key: 'date', header: 'Date', cell: (reimburse) => <span className="text-sm text-muted-foreground">{reimburse.date ? format(new Date(reimburse.date), 'MMM d, yyyy') : '-'}</span> },
     { key: 'status', header: 'Status', cell: (reimburse) => <StatusBadge status={reimburse.status} /> },
     { key: 'remarks', header: 'Remarks', cell: (reimburse) => <p className="text-sm text-muted-foreground truncate max-w-[150px]">{reimburse.remarks || '-'}</p> },
   ];

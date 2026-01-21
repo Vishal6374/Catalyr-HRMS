@@ -189,7 +189,7 @@ export default function LoanAdvanceRequest() {
     ];
 
     return (
-        <MainLayout>
+       
             <div className="space-y-6 animate-fade-in">
                 <PageHeader
                     title="Loan & Advance Requests"
@@ -374,6 +374,6 @@ export default function LoanAdvanceRequest() {
                     </DialogContent>
                 </Dialog>
             </div>
-        </MainLayout>
+     
     );
 }

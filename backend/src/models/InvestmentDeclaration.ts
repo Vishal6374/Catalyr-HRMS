@@ -74,7 +74,7 @@ InvestmentDeclaration.init(
             allowNull: false,
         },
         proof_documents: {
-            type: DataTypes.ARRAY(DataTypes.STRING),
+            type: DataTypes.JSON, // Store array as JSON for MySQL compatibility
             allowNull: true,
         },
         status: {
