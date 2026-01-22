@@ -110,7 +110,7 @@ export default function Complaints() {
       cell: (comp) => (
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${comp.priority === 'high' ? 'bg-destructive/10 text-destructive' :
-              comp.priority === 'medium' ? 'bg-warning/10 text-warning' : 'bg-info/10 text-info'
+            comp.priority === 'medium' ? 'bg-warning/10 text-warning' : 'bg-info/10 text-info'
             }`}>
             <AlertCircle className="w-5 h-5" />
           </div>
@@ -197,7 +197,7 @@ export default function Complaints() {
 
   return (
     <MainLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 sm:space-y-6 animate-fade-in">
         <PageHeader title="Complaints" description={isHR ? 'Manage employee complaints and grievances' : 'Submit anonymous or identified complaints'}>
           {!isHR && (
             <Button onClick={openCreateDialog}>
@@ -208,14 +208,14 @@ export default function Complaints() {
         </PageHeader>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">Total Complaints</p>
-            <p className="text-2xl font-bold">{isHR ? complaints.length : myComplaints.length}</p>
+            <p className="text-xl sm:text-2xl font-bold">{isHR ? complaints.length : myComplaints.length}</p>
           </div>
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">Pending</p>
-            <p className="text-2xl font-bold">
+            <p className="text-xl sm:text-2xl font-bold">
               {isHR
                 ? complaints.filter((c: any) => c.status === 'pending').length
                 : myComplaints.filter((c: any) => c.status === 'pending').length}
@@ -223,7 +223,7 @@ export default function Complaints() {
           </div>
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">High Priority</p>
-            <p className="text-2xl font-bold">
+            <p className="text-xl sm:text-2xl font-bold">
               {isHR
                 ? complaints.filter((c: any) => c.priority === 'high').length
                 : myComplaints.filter((c: any) => c.priority === 'high').length}
@@ -233,7 +233,7 @@ export default function Complaints() {
 
         <div className="flex items-center gap-4">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -255,7 +255,7 @@ export default function Complaints() {
 
         {/* Create Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>New Complaint</DialogTitle>
               <DialogDescription>Submit your grievance securely.</DialogDescription>
@@ -321,7 +321,7 @@ export default function Complaints() {
 
         {/* Respond Dialog */}
         <Dialog open={isRespondDialogOpen} onOpenChange={setIsRespondDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Respond to Complaint</DialogTitle>
               <DialogDescription>Provide a response or update status.</DialogDescription>

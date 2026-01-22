@@ -172,7 +172,7 @@ export default function Holidays() {
 
   return (
     <MainLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 sm:space-y-6 animate-fade-in">
         <PageHeader
           title="Holidays"
           description={isHR ? "Manage company holidays" : "View company holidays"}
@@ -185,18 +185,18 @@ export default function Holidays() {
           )}
         </PageHeader>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">Total Holidays</p>
-            <p className="text-2xl font-bold">{holidays.length}</p>
+            <p className="text-xl sm:text-2xl font-bold">{holidays.length}</p>
           </div>
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">National</p>
-            <p className="text-2xl font-bold">{holidays.filter((h: any) => h.type === 'national').length}</p>
+            <p className="text-xl sm:text-2xl font-bold">{holidays.filter((h: any) => h.type === 'national').length}</p>
           </div>
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">Optional</p>
-            <p className="text-2xl font-bold">{holidays.filter((h: any) => h.is_optional).length}</p>
+            <p className="text-xl sm:text-2xl font-bold">{holidays.filter((h: any) => h.is_optional).length}</p>
           </div>
         </div>
 
@@ -205,7 +205,7 @@ export default function Holidays() {
             value={selectedYear.toString()}
             onValueChange={(val) => setSelectedYear(Number(val))}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -226,7 +226,7 @@ export default function Holidays() {
         {/* Create/Edit Dialog - HR Only */}
         {isHR && (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogContent>
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{selectedHoliday ? 'Edit Holiday' : 'Add Holiday'}</DialogTitle>
                 <DialogDescription>

@@ -191,21 +191,21 @@ export default function Leaves() {
 
   return (
     <MainLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 sm:space-y-6 animate-fade-in">
         <PageHeader title="Leaves" description={isHR ? 'Manage employee leave requests' : 'Apply and track your leaves'}>
           {!isHR && <Button onClick={() => setIsDialogOpen(true)}><Plus className="w-4 h-4 mr-2" />Apply Leave</Button>}
         </PageHeader>
 
         {/* ... existing Cards ... */}
         {!isHR && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {myBalances.map((balance: any) => (
               <Card key={balance.leave_type}>
                 <CardContent className="pt-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground capitalize">{balance.leave_type}</p>
-                      <p className="text-2xl font-bold">{balance.remaining}</p>
+                      <p className="text-xl sm:text-2xl font-bold">{balance.remaining}</p>
                       <p className="text-xs text-muted-foreground">of {balance.total} days</p>
                     </div>
                     <CalendarDays className="w-8 h-8 text-primary/20" />
@@ -220,16 +220,16 @@ export default function Leaves() {
         )}
 
         {isHR && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center"><Clock className="w-5 h-5 text-warning" /></div><div><p className="text-2xl font-bold">{leaves.filter((l: any) => l.status === 'pending').length}</p><p className="text-xs text-muted-foreground">Pending</p></div></div></CardContent></Card>
-            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center"><Check className="w-5 h-5 text-success" /></div><div><p className="text-2xl font-bold">{leaves.filter((l: any) => l.status === 'approved').length}</p><p className="text-xs text-muted-foreground">Approved</p></div></div></CardContent></Card>
-            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center"><X className="w-5 h-5 text-destructive" /></div><div><p className="text-2xl font-bold">{leaves.filter((l: any) => l.status === 'rejected').length}</p><p className="text-xs text-muted-foreground">Rejected</p></div></div></CardContent></Card>
-            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-info/10 flex items-center justify-center"><Clock className="w-5 h-5 text-info" /></div><div><p className="text-2xl font-bold">{leaves.filter((l: any) => l.status === 'approved' && new Date(l.start_date) <= new Date() && new Date(l.end_date) >= new Date()).length}</p><p className="text-xs text-muted-foreground">On Leave Now</p></div></div></CardContent></Card>
+          <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center"><Clock className="w-5 h-5 text-warning" /></div><div><p className="text-xl sm:text-2xl font-bold">{leaves.filter((l: any) => l.status === 'pending').length}</p><p className="text-xs text-muted-foreground">Pending</p></div></div></CardContent></Card>
+            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center"><Check className="w-5 h-5 text-success" /></div><div><p className="text-xl sm:text-2xl font-bold">{leaves.filter((l: any) => l.status === 'approved').length}</p><p className="text-xs text-muted-foreground">Approved</p></div></div></CardContent></Card>
+            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center"><X className="w-5 h-5 text-destructive" /></div><div><p className="text-xl sm:text-2xl font-bold">{leaves.filter((l: any) => l.status === 'rejected').length}</p><p className="text-xs text-muted-foreground">Rejected</p></div></div></CardContent></Card>
+            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-info/10 flex items-center justify-center"><Clock className="w-5 h-5 text-info" /></div><div><p className="text-xl sm:text-2xl font-bold">{leaves.filter((l: any) => l.status === 'approved' && new Date(l.start_date) <= new Date() && new Date(l.end_date) >= new Date()).length}</p><p className="text-xs text-muted-foreground">On Leave Now</p></div></div></CardContent></Card>
           </div>
         )}
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-full sm:w-[150px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -240,21 +240,23 @@ export default function Leaves() {
           </SelectContent>
         </Select>
 
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader><CardTitle className="text-base">{isHR ? 'Leave Requests' : 'My Leave Requests'}</CardTitle></CardHeader>
-          <CardContent>
-            <DataTable
-              columns={isHR ? hrColumns : employeeColumns}
-              data={isHR ? leaves : myLeaves.filter((l: any) => statusFilter === 'all' || l.status === statusFilter)}
-              keyExtractor={(leave: any) => leave.id}
-              emptyMessage="No leave requests found"
-            />
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <DataTable
+                columns={isHR ? hrColumns : employeeColumns}
+                data={isHR ? leaves : myLeaves.filter((l: any) => statusFilter === 'all' || l.status === statusFilter)}
+                keyExtractor={(leave: any) => leave.id}
+                emptyMessage="No leave requests found"
+              />
+            </div>
           </CardContent>
         </Card>
 
         {/* Apply Leave Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Apply for Leave</DialogTitle>
               <DialogDescription>Submit a new leave request.</DialogDescription>
@@ -271,7 +273,7 @@ export default function Leaves() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Start Date</Label>
                   <Input type="date" value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} required />

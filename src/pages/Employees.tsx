@@ -180,7 +180,7 @@ export default function Employees() {
 
   return (
     <MainLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 sm:space-y-6 animate-fade-in">
         <PageHeader title="Employees" description="Manage your organization's workforce">
           <Button onClick={openCreateDialog}>
             <UserPlus className="w-4 h-4 mr-2" />
@@ -188,27 +188,27 @@ export default function Employees() {
           </Button>
         </PageHeader>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">Total</p>
-            <p className="text-2xl font-bold">{employees.length}</p>
+            <p className="text-xl sm:text-2xl font-bold">{employees.length}</p>
           </div>
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">Active</p>
-            <p className="text-2xl font-bold text-success">{employees.filter((e) => e.status === 'active').length}</p>
+            <p className="text-xl sm:text-2xl font-bold text-success">{employees.filter((e) => e.status === 'active').length}</p>
           </div>
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">On Leave</p>
-            <p className="text-2xl font-bold text-warning">{employees.filter((e) => e.status === 'on_leave').length}</p>
+            <p className="text-xl sm:text-2xl font-bold text-warning">{employees.filter((e) => e.status === 'on_leave').length}</p>
           </div>
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">HR Staff</p>
-            <p className="text-2xl font-bold">{employees.filter((e) => e.role === 'hr').length}</p>
+            <p className="text-xl sm:text-2xl font-bold">{employees.filter((e) => e.role === 'hr').length}</p>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+          <div className="relative w-full sm:flex-1 sm:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search employees..."
@@ -219,7 +219,7 @@ export default function Employees() {
           </div>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -240,7 +240,7 @@ export default function Employees() {
 
         {/* Create/Edit Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedEmployee ? 'Edit Employee' : 'Add Employee'}</DialogTitle>
               <DialogDescription>
@@ -248,7 +248,7 @@ export default function Employees() {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
                   <Input
@@ -270,7 +270,7 @@ export default function Employees() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="department">Department</Label>
                   <Select
@@ -307,7 +307,7 @@ export default function Employees() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="role">System Role</Label>
                   <Select

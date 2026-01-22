@@ -181,7 +181,7 @@ export default function Departments() {
 
   return (
     <MainLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 sm:space-y-6 animate-fade-in">
         <PageHeader title="Departments" description="Manage company departments">
           <Button onClick={openCreateDialog}>
             <Plus className="w-4 h-4 mr-2" />
@@ -190,23 +190,23 @@ export default function Departments() {
         </PageHeader>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">Total Departments</p>
-            <p className="text-2xl font-bold">{departments.length}</p>
+            <p className="text-xl sm:text-2xl font-bold">{departments.length}</p>
           </div>
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">Active</p>
-            <p className="text-2xl font-bold">{departments.filter((d: any) => d.is_active).length}</p>
+            <p className="text-xl sm:text-2xl font-bold">{departments.filter((d: any) => d.is_active).length}</p>
           </div>
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">Total Employees</p>
-            <p className="text-2xl font-bold">{departments.reduce((sum: number, d: any) => sum + (d.employee_count || 0), 0)}</p>
+            <p className="text-xl sm:text-2xl font-bold">{departments.reduce((sum: number, d: any) => sum + (d.employee_count || 0), 0)}</p>
           </div>
         </div>
 
         {/* Search */}
-        <div className="relative max-w-sm">
+        <div className="relative w-full sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search departments..."
@@ -220,7 +220,7 @@ export default function Departments() {
 
         {/* Create/Edit Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedDept ? 'Edit Department' : 'Add Department'}</DialogTitle>
               <DialogDescription>

@@ -160,6 +160,49 @@ export const updateEmployee = async (req: AuthRequest, res: Response): Promise<v
     });
 };
 
+export const terminateEmployee = async (req: AuthRequest, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const { termination_date, termination_reason } = req.body;
+
+    const employee = await User.findByPk(id as string);
+
+    if (!employee) {
+        throw new AppError(404, 'Employee not found');
+    }
+
+    if (employee.status === 'terminated') {
+        throw new AppError(400, 'Employee is already terminated');
+    }
+
+    // Terminate employee
+    employee.status = 'terminated';
+    employee.termination_date = termination_date ? new Date(termination_date) : new Date();
+    employee.termination_reason = termination_reason || 'No reason provided';
+
+    await employee.save();
+
+    res.json({
+        message: 'Employee terminated successfully',
+        employee: employee.toJSON(),
+    });
+};
+
+export const permanentlyDeleteEmployee = async (req: AuthRequest, res: Response): Promise<void> => {
+    const { id } = req.params;
+
+    const employee = await User.findByPk(id as string);
+
+    if (!employee) {
+        throw new AppError(404, 'Employee not found');
+    }
+
+    // Hard delete - permanently remove from database
+    await employee.destroy();
+
+    res.json({ message: 'Employee permanently deleted from system' });
+};
+
+// Soft delete (kept for backward compatibility)
 export const deleteEmployee = async (req: AuthRequest, res: Response): Promise<void> => {
     const { id } = req.params;
 
@@ -171,6 +214,8 @@ export const deleteEmployee = async (req: AuthRequest, res: Response): Promise<v
 
     // Soft delete by setting status to terminated
     employee.status = 'terminated';
+    employee.termination_date = new Date();
+    employee.termination_reason = 'Soft delete';
     await employee.save();
 
     res.json({ message: 'Employee terminated successfully' });

@@ -4,9 +4,11 @@
   "description": "Backend API for HRMS",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "nodemon src/server.ts",
+    "dev": "cross-env NODE_ENV=development nodemon src/server.ts",
+    "dev:prod": "cross-env NODE_ENV=production nodemon src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "cross-env NODE_ENV=production node dist/server.js",
+    "start:dev": "cross-env NODE_ENV=development node dist/server.js",
     "db:sync": "ts-node src/scripts/syncDb.ts",
     "db:seed": "ts-node src/scripts/seedDb.ts"
   },
@@ -37,6 +39,7 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^25.0.9",
     "@types/uuid": "^9.0.8",
+    "cross-env": "^10.1.0",
     "nodemon": "^3.1.11",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"

@@ -28,8 +28,12 @@ export const employeeService = {
         api.post('/employees', data),
     update: (id: string, data: any) =>
         api.put(`/employees/${id}`, data),
+    terminate: (id: string, data: any) =>
+        api.post(`/employees/${id}/terminate`, data),
     delete: (id: string) =>
         api.delete(`/employees/${id}`),
+    permanentDelete: (id: string) =>
+        api.delete(`/employees/${id}/permanent`),
 };
 
 // Department Services
@@ -68,8 +72,14 @@ export const attendanceService = {
         api.get('/attendance/summary', { params }),
     mark: (data: any) =>
         api.post('/attendance/mark', data),
+    update: (id: string, data: any) =>
+        api.put(`/attendance/update/${id}`, data),
     lock: (month: number, year: number) =>
         api.post('/attendance/lock', { month, year }),
+    getSettings: () =>
+        api.get('/attendance/settings'),
+    updateSettings: (data: any) =>
+        api.put('/attendance/settings', data),
 };
 
 // Leave Services

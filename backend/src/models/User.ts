@@ -19,6 +19,8 @@ export interface UserAttributes {
     status: 'active' | 'inactive' | 'on_leave' | 'terminated';
     address?: string;
     avatar_url?: string;
+    termination_date?: Date;
+    termination_reason?: string;
     created_at?: Date;
     updated_at?: Date;
 }
@@ -42,6 +44,8 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
     public status!: 'active' | 'inactive' | 'on_leave' | 'terminated';
     public address?: string;
     public avatar_url?: string;
+    public termination_date?: Date;
+    public termination_reason?: string;
 
     public readonly created_at!: Date;
     public readonly updated_at!: Date;
@@ -130,6 +134,14 @@ User.init(
         },
         avatar_url: {
             type: DataTypes.STRING(500),
+            allowNull: true,
+        },
+        termination_date: {
+            type: DataTypes.DATEONLY,
+            allowNull: true,
+        },
+        termination_reason: {
+            type: DataTypes.TEXT,
             allowNull: true,
         },
     },

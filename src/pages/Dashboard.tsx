@@ -122,10 +122,10 @@ export default function Dashboard() {
       const { data } = await holidayService.getAll();
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       // Handle both array and object responses
       const holidaysList = Array.isArray(data) ? data : (data.holidays || []);
-      
+
       return holidaysList
         .filter((holiday: any) => {
           const holidayDate = new Date(holiday.date);
@@ -211,21 +211,21 @@ export default function Dashboard() {
 
   return (
     <MainLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 sm:space-y-6 animate-fade-in">
         <PageHeader title={isHR ? 'HR Dashboard' : `Welcome, ${user?.name?.split(' ')[0]}!`} description="Here's what's happening today." />
 
         {/* Key Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center"><Users className="w-5 h-5 text-primary" /></div><div><p className="text-2xl font-bold">{stats?.activeEmployees || 0}</p><p className="text-xs text-muted-foreground">Active Employees</p></div></div></CardContent></Card>
-          <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center"><UserCheck className="w-5 h-5 text-success" /></div><div><p className="text-2xl font-bold">{stats?.presentToday || stats?.presentDaysThisMonth || 0}</p><p className="text-xs text-muted-foreground">{isHR ? 'Present Today' : 'Present This Month'}</p></div></div></CardContent></Card>
-          <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center"><Clock className="w-5 h-5 text-warning" /></div><div><p className="text-2xl font-bold">{(stats?.pendingLeaves || 0) + (stats?.pendingReimbursements || 0)}</p><p className="text-xs text-muted-foreground">Pending Approvals</p></div></div></CardContent></Card>
-          <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-info/10 flex items-center justify-center"><MessageSquareWarning className="w-5 h-5 text-info" /></div><div><p className="text-2xl font-bold">{stats?.activeComplaints || 0}</p><p className="text-xs text-muted-foreground">Active Complaints</p></div></div></CardContent></Card>
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center"><Users className="w-5 h-5 text-primary" /></div><div><p className="text-xl sm:text-2xl font-bold">{stats?.activeEmployees || 0}</p><p className="text-xs text-muted-foreground">Active Employees</p></div></div></CardContent></Card>
+          <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center"><UserCheck className="w-5 h-5 text-success" /></div><div><p className="text-xl sm:text-2xl font-bold">{stats?.presentToday || stats?.presentDaysThisMonth || 0}</p><p className="text-xs text-muted-foreground">{isHR ? 'Present Today' : 'Present This Month'}</p></div></div></CardContent></Card>
+          <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center"><Clock className="w-5 h-5 text-warning" /></div><div><p className="text-xl sm:text-2xl font-bold">{(stats?.pendingLeaves || 0) + (stats?.pendingReimbursements || 0)}</p><p className="text-xs text-muted-foreground">Pending Approvals</p></div></div></CardContent></Card>
+          <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-info/10 flex items-center justify-center"><MessageSquareWarning className="w-5 h-5 text-info" /></div><div><p className="text-xl sm:text-2xl font-bold">{stats?.activeComplaints || 0}</p><p className="text-xs text-muted-foreground">Active Complaints</p></div></div></CardContent></Card>
         </div>
 
         {/* HR Charts */}
         {isHR && (
           <>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* Attendance Trend Chart */}
               <Card>
                 <CardHeader>
@@ -235,7 +235,7 @@ export default function Dashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
+                  <ResponsiveContainer width="100%" height={250} className="sm:h-[300px]">
                     <LineChart data={hrAttendanceTrendData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
@@ -326,7 +326,7 @@ export default function Dashboard() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* Leave Statistics */}
               {hrLeaveStatsData.some(l => l.count > 0) && (
                 <Card>
@@ -402,7 +402,7 @@ export default function Dashboard() {
         {/* Employee Charts */}
         {!isHR && (
           <>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* My Attendance Trend */}
               <Card>
                 <CardHeader>
@@ -502,7 +502,7 @@ export default function Dashboard() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* Salary Trend */}
               {employeeSalaryTrendData.length > 0 && (
                 <Card>
@@ -584,7 +584,7 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
               <div className="p-4 rounded-lg bg-muted/50">
                 <p className="text-sm text-muted-foreground">Status</p>
                 <p className="font-semibold capitalize">{stats?.payrollStatus || 'N/A'}</p>

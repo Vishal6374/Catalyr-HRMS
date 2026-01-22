@@ -108,8 +108,8 @@ export default function Payroll() {
             </Button>
           )}
           {batch.status === 'paid' && (
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               variant="outline"
               onClick={() => {
                 const element = document.createElement('a');
@@ -195,10 +195,10 @@ export default function Payroll() {
 
   return (
     <MainLayout>
-      <div className="space-y-6 animate-fade-in max-w-6xl mx-auto">
+      <div className="space-y-4 sm:space-y-6 animate-fade-in">
         <PageHeader title="Payroll" description={isHR ? 'Process and manage payroll' : 'View your salary slips'}>
           {isHR && (
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Button variant="outline" onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Manual Slip
@@ -219,31 +219,33 @@ export default function Payroll() {
         )}
 
         {!isHR && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <Card className="sm:col-span-1"><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-lg gradient-primary flex items-center justify-center"><DollarSign className="w-6 h-6 text-white" /></div><div><p className="text-3xl font-bold">${mySalarySlips[0]?.net_salary ? Number(mySalarySlips[0].net_salary).toLocaleString() : '0'}</p><p className="text-sm text-muted-foreground">Latest Net Pay</p></div></div></CardContent></Card>
-            <Card><CardContent className="pt-4"><p className="text-2xl font-bold">{mySalarySlips.length}</p><p className="text-xs text-muted-foreground">Total Slips</p></CardContent></Card>
-            <Card><CardContent className="pt-4"><p className="text-2xl font-bold">${mySalarySlips.reduce((sum: number, s: any) => sum + Number(s.net_salary), 0).toLocaleString()}</p><p className="text-xs text-muted-foreground">YTD Earnings</p></CardContent></Card>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+            <Card className="sm:col-span-1 hover:shadow-md transition-shadow"><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shadow-lg"><DollarSign className="w-6 h-6 text-white" /></div><div><p className="text-2xl sm:text-3xl font-bold">${mySalarySlips[0]?.net_salary ? Number(mySalarySlips[0].net_salary).toLocaleString() : '0'}</p><p className="text-xs sm:text-sm text-muted-foreground">Latest Net Pay</p></div></div></CardContent></Card>
+            <Card className="hover:shadow-md transition-shadow"><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center"><Wallet className="w-6 h-6 text-primary" /></div><div><p className="text-xl sm:text-2xl font-bold">{mySalarySlips.length}</p><p className="text-xs text-muted-foreground">Total Slips</p></div></div></CardContent></Card>
+            <Card className="hover:shadow-md transition-shadow"><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center"><DollarSign className="w-6 h-6 text-success" /></div><div><p className="text-xl sm:text-2xl font-bold">${mySalarySlips.reduce((sum: number, s: any) => sum + Number(s.net_salary), 0).toLocaleString()}</p><p className="text-xs text-muted-foreground">YTD Earnings</p></div></div></CardContent></Card>
           </div>
         )}
 
         {isHR ? (
           <Tabs defaultValue="batches">
-            <TabsList>
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="batches">Payroll Batches</TabsTrigger>
               <TabsTrigger value="slips">Salary Slips</TabsTrigger>
             </TabsList>
             <TabsContent value="batches" className="mt-6">
-              <DataTable columns={batchColumns} data={batches} keyExtractor={(b) => b.id} emptyMessage="No batches" />
+              <Card className="overflow-hidden"><CardContent className="p-0"><div className="overflow-x-auto"><DataTable columns={batchColumns} data={batches} keyExtractor={(b) => b.id} emptyMessage="No batches" /></div></CardContent></Card>
             </TabsContent>
             <TabsContent value="slips" className="mt-6">
-              <DataTable columns={slipColumns} data={slips} keyExtractor={(s) => s.id} emptyMessage="No slips" />
+              <Card className="overflow-hidden"><CardContent className="p-0"><div className="overflow-x-auto"><DataTable columns={slipColumns} data={slips} keyExtractor={(s) => s.id} emptyMessage="No slips" /></div></CardContent></Card>
             </TabsContent>
           </Tabs>
         ) : (
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader><CardTitle className="text-base">My Salary Slips</CardTitle></CardHeader>
-            <CardContent>
-              <DataTable columns={mySlipColumns} data={mySalarySlips} keyExtractor={(s) => s.id} emptyMessage="No salary slips" />
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <DataTable columns={mySlipColumns} data={mySalarySlips} keyExtractor={(s) => s.id} emptyMessage="No salary slips" />
+              </div>
             </CardContent>
           </Card>
         )}
