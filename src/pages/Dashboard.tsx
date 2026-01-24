@@ -122,10 +122,10 @@ export default function Dashboard() {
       const { data } = await holidayService.getAll();
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       // Handle both array and object responses
       const holidaysList = Array.isArray(data) ? data : (data.holidays || []);
-      
+
       return holidaysList
         .filter((holiday: any) => {
           const holidayDate = new Date(holiday.date);
@@ -137,16 +137,36 @@ export default function Dashboard() {
     },
   });
 
+  // Fetch attendance logs for HR dashboard
+  const { data: allAttendanceLogs = [] } = useQuery({
+    queryKey: ['all-attendance-logs'],
+    queryFn: async () => {
+      const endDate = new Date();
+      const startDate = subDays(endDate, 6); // Last 7 days
+      const { data } = await attendanceService.getLogs({
+        start_date: format(startDate, 'yyyy-MM-dd'),
+        end_date: format(endDate, 'yyyy-MM-dd'),
+      });
+      return data;
+    },
+    enabled: isHR,
+  });
+
   // Process HR data for charts
   const hrAttendanceTrendData = isHR ? (() => {
     const last7Days = Array.from({ length: 7 }, (_, i) => subDays(new Date(), 6 - i));
     return last7Days.map(date => {
       const dateStr = format(date, 'yyyy-MM-dd');
-      // This would need attendance logs for all employees - simplified for now
+      const dayLogs = allAttendanceLogs.filter((log: any) =>
+        format(new Date(log.date), 'yyyy-MM-dd') === dateStr
+      );
+      const presentCount = dayLogs.filter((log: any) => log.status === 'present').length;
+      const absentCount = dayLogs.filter((log: any) => log.status === 'absent').length;
+
       return {
         date: format(date, 'EEE'),
-        present: Math.floor(Math.random() * 20) + 60, // Placeholder - needs actual data
-        absent: Math.floor(Math.random() * 10) + 5,
+        present: presentCount,
+        absent: absentCount,
       };
     });
   })() : [];
@@ -169,15 +189,39 @@ export default function Dashboard() {
   })) : [];
 
   // Process Employee data for charts
-  const employeeAttendanceData = !isHR ? (() => {
+  const employeeWorkHoursData = !isHR ? (() => {
     const last30Days = Array.from({ length: 30 }, (_, i) => subDays(new Date(), 29 - i));
     return last30Days.map(date => {
       const log = myAttendanceLogs.find((l: any) =>
         format(new Date(l.date), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
       );
+
+      let hours = 0;
+      let hoursDisplay = "0h 0m";
+
+      if (log && log.check_in && log.check_out) {
+        const checkIn = new Date(log.check_in);
+        const checkOut = new Date(log.check_out);
+        let diffMs = checkOut.getTime() - checkIn.getTime();
+
+        // Handle overnight shifts (if checkout is before checkin, assume next day)
+        if (diffMs < 0) {
+          diffMs += 24 * 60 * 60 * 1000;
+        }
+
+        // Calculate decimal hours for bar height
+        hours = Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100; // 2 decimal places
+
+        // Calculate exact hours and minutes for display
+        const h = Math.floor(diffMs / (1000 * 60 * 60));
+        const m = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        hoursDisplay = `${h}h ${m}m`;
+      }
+
       return {
         date: format(date, 'dd'),
-        status: log ? (log.status === 'present' ? 1 : 0) : 0,
+        hours: hours,
+        hoursDisplay: hoursDisplay,
       };
     });
   })() : [];
@@ -197,7 +241,7 @@ export default function Dashboard() {
     { status: 'Approved', count: myReimbursements.filter((r: any) => r.status === 'approved').length, color: '#10b981' },
     { status: 'Pending', count: myReimbursements.filter((r: any) => r.status === 'pending').length, color: '#f59e0b' },
     { status: 'Rejected', count: myReimbursements.filter((r: any) => r.status === 'rejected').length, color: '#ef4444' },
-  ].filter(r => r.count > 0) : [];
+  ] : [];
 
   if (isLoading) {
     return (
@@ -211,21 +255,21 @@ export default function Dashboard() {
 
   return (
     <MainLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 sm:space-y-6 animate-fade-in">
         <PageHeader title={isHR ? 'HR Dashboard' : `Welcome, ${user?.name?.split(' ')[0]}!`} description="Here's what's happening today." />
 
         {/* Key Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center"><Users className="w-5 h-5 text-primary" /></div><div><p className="text-2xl font-bold">{stats?.activeEmployees || 0}</p><p className="text-xs text-muted-foreground">Active Employees</p></div></div></CardContent></Card>
-          <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center"><UserCheck className="w-5 h-5 text-success" /></div><div><p className="text-2xl font-bold">{stats?.presentToday || stats?.presentDaysThisMonth || 0}</p><p className="text-xs text-muted-foreground">{isHR ? 'Present Today' : 'Present This Month'}</p></div></div></CardContent></Card>
-          <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center"><Clock className="w-5 h-5 text-warning" /></div><div><p className="text-2xl font-bold">{(stats?.pendingLeaves || 0) + (stats?.pendingReimbursements || 0)}</p><p className="text-xs text-muted-foreground">Pending Approvals</p></div></div></CardContent></Card>
-          <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-info/10 flex items-center justify-center"><MessageSquareWarning className="w-5 h-5 text-info" /></div><div><p className="text-2xl font-bold">{stats?.activeComplaints || 0}</p><p className="text-xs text-muted-foreground">Active Complaints</p></div></div></CardContent></Card>
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center"><Users className="w-5 h-5 text-primary" /></div><div><p className="text-xl sm:text-2xl font-bold">{stats?.activeEmployees || 0}</p><p className="text-xs text-muted-foreground">Active Employees</p></div></div></CardContent></Card>
+          <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center"><UserCheck className="w-5 h-5 text-success" /></div><div><p className="text-xl sm:text-2xl font-bold">{stats?.presentToday || stats?.presentDaysThisMonth || 0}</p><p className="text-xs text-muted-foreground">{isHR ? 'Present Today' : 'Present This Month'}</p></div></div></CardContent></Card>
+          <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center"><Clock className="w-5 h-5 text-warning" /></div><div><p className="text-xl sm:text-2xl font-bold">{(stats?.pendingLeaves || 0) + (stats?.pendingReimbursements || 0)}</p><p className="text-xs text-muted-foreground">Pending Approvals</p></div></div></CardContent></Card>
+          <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-info/10 flex items-center justify-center"><MessageSquareWarning className="w-5 h-5 text-info" /></div><div><p className="text-xl sm:text-2xl font-bold">{stats?.activeComplaints || 0}</p><p className="text-xs text-muted-foreground">Active Complaints</p></div></div></CardContent></Card>
         </div>
 
         {/* HR Charts */}
         {isHR && (
           <>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* Attendance Trend Chart */}
               <Card>
                 <CardHeader>
@@ -235,7 +279,7 @@ export default function Dashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
+                  <ResponsiveContainer width="100%" height={250} className="sm:h-[300px]">
                     <LineChart data={hrAttendanceTrendData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
@@ -326,7 +370,7 @@ export default function Dashboard() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* Leave Statistics */}
               {hrLeaveStatsData.some(l => l.count > 0) && (
                 <Card>
@@ -402,30 +446,33 @@ export default function Dashboard() {
         {/* Employee Charts */}
         {!isHR && (
           <>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* My Attendance Trend */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              {/* My Work Hours */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4" />
-                    My Attendance (Last 30 Days)
+                    <Clock className="w-4 h-4" />
+                    My Work Hours (Last 30 Days)
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={employeeAttendanceData}>
+                    <BarChart data={employeeWorkHoursData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
-                      <YAxis stroke="hsl(var(--muted-foreground))" domain={[0, 1]} ticks={[0, 1]} />
+                      <YAxis stroke="hsl(var(--muted-foreground))" label={{ value: 'Hours', angle: -90, position: 'insideLeft' }} />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: 'hsl(var(--card))',
                           border: '1px solid hsl(var(--border))',
                           borderRadius: '8px'
                         }}
-                        formatter={(value: number) => value === 1 ? 'Present' : 'Absent'}
+                        formatter={(value: number, name: string, props: any) => [
+                          props.payload.hoursDisplay,
+                          'Work Hours'
+                        ]}
                       />
-                      <Bar dataKey="status" fill="#10b981" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="hours" fill="#10b981" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -502,7 +549,7 @@ export default function Dashboard() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* Salary Trend */}
               {employeeSalaryTrendData.length > 0 && (
                 <Card>
@@ -575,31 +622,33 @@ export default function Dashboard() {
           </>
         )}
 
-        {/* Payroll Summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Wallet className="w-4 h-4" />
-              Payroll Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <div className="p-4 rounded-lg bg-muted/50">
-                <p className="text-sm text-muted-foreground">Status</p>
-                <p className="font-semibold capitalize">{stats?.payrollStatus || 'N/A'}</p>
+        {/* Payroll Summary - HR Only */}
+        {isHR && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Wallet className="w-4 h-4" />
+                Payroll Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <p className="font-semibold capitalize">{stats?.payrollStatus || 'N/A'}</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <p className="text-sm text-muted-foreground">Employees</p>
+                  <p className="font-semibold">{stats?.totalEmployees || 0}</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <p className="text-sm text-muted-foreground">Total</p>
+                  <p className="font-semibold">${(stats?.totalPayroll || 0).toLocaleString()}</p>
+                </div>
               </div>
-              <div className="p-4 rounded-lg bg-muted/50">
-                <p className="text-sm text-muted-foreground">Employees</p>
-                <p className="font-semibold">{stats?.totalEmployees || 0}</p>
-              </div>
-              <div className="p-4 rounded-lg bg-muted/50">
-                <p className="text-sm text-muted-foreground">Total</p>
-                <p className="font-semibold">${(stats?.totalPayroll || 0).toLocaleString()}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </MainLayout>
   );

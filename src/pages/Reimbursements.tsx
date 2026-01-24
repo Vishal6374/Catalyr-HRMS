@@ -23,7 +23,7 @@ export default function Reimbursements() {
   const [selectedReimburse, setSelectedReimburse] = useState<any>(null);
   const [formData, setFormData] = useState({
     amount: '',
-    category: 'Travel',
+    category: 'travel',
     description: '',
     receipt_url: ''
   });
@@ -79,7 +79,7 @@ export default function Reimbursements() {
   });
 
   const resetForm = () => {
-    setFormData({ amount: '', category: 'Travel', description: '', receipt_url: '' });
+    setFormData({ amount: '', category: 'travel', description: '', receipt_url: '' });
   };
 
   const openCreateDialog = () => {
@@ -172,7 +172,7 @@ export default function Reimbursements() {
 
   return (
     <MainLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 sm:space-y-6 animate-fade-in">
         <PageHeader title="Reimbursements" description={isHR ? 'Manage employee reimbursement claims' : 'Submit and track reimbursement claims'}>
           {!isHR && (
             <Button onClick={openCreateDialog}>
@@ -183,14 +183,14 @@ export default function Reimbursements() {
         </PageHeader>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">Total Claims</p>
-            <p className="text-2xl font-bold">{isHR ? reimbursements.length : myReimbursements.length}</p>
+            <p className="text-xl sm:text-2xl font-bold">{isHR ? reimbursements.length : myReimbursements.length}</p>
           </div>
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">Pending Approval</p>
-            <p className="text-2xl font-bold">
+            <p className="text-xl sm:text-2xl font-bold">
               {isHR
                 ? reimbursements.filter((r: any) => r.status === 'pending').length
                 : myReimbursements.filter((r: any) => r.status === 'pending').length}
@@ -198,7 +198,7 @@ export default function Reimbursements() {
           </div>
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">Total Amount</p>
-            <p className="text-2xl font-bold">
+            <p className="text-xl sm:text-2xl font-bold">
               ₹{(isHR ? reimbursements : myReimbursements)
                 .filter((r: any) => r.status === 'approved')
                 .reduce((sum: number, r: any) => sum + Number(r.amount), 0)
@@ -209,7 +209,7 @@ export default function Reimbursements() {
 
         <div className="flex items-center gap-4">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -230,7 +230,7 @@ export default function Reimbursements() {
 
         {/* Create Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>New Reimbursement Claim</DialogTitle>
               <DialogDescription>Submit a new claim for expense reimbursement.</DialogDescription>
@@ -246,11 +246,11 @@ export default function Reimbursements() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Travel">Travel</SelectItem>
-                    <SelectItem value="Food">Food</SelectItem>
-                    <SelectItem value="Lodging">Lodging</SelectItem>
-                    <SelectItem value="Equipment">Equipment</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
+                    <SelectItem value="travel">Travel</SelectItem>
+                    <SelectItem value="event">Event</SelectItem>
+                    <SelectItem value="medical">Medical</SelectItem>
+                    <SelectItem value="equipment">Equipment</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -297,7 +297,7 @@ export default function Reimbursements() {
 
         {/* Reject Dialog */}
         <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Reject Reimbursement</DialogTitle>
               <DialogDescription>Please provide a reason for rejection.</DialogDescription>

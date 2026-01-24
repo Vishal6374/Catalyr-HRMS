@@ -9,10 +9,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LeaveRequest } from '@/types/hrms';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, CalendarDays, Check, X, Clock } from 'lucide-react';
+import { Plus, CalendarDays, Check, X, Clock, Settings } from 'lucide-react';
 import { format } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { leaveService, employeeService } from '@/services/apiService';
+import { leaveService, employeeService, leaveLimitService } from '@/services/apiService';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,9 @@ export default function Leaves() {
 
   // New hooks moved from bottom
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [leaveLimits, setLeaveLimits] = useState({ casual_leave: 12, sick_leave: 12, earned_leave: 15 });
+
   const [formData, setFormData] = useState({
     leave_type: 'sick',
     start_date: '',
@@ -41,6 +44,34 @@ export default function Leaves() {
       });
       return data;
     },
+  });
+
+  // Fetch leave limits
+  useQuery({
+    queryKey: ['leave-limits'],
+    queryFn: async () => {
+      const { data } = await leaveLimitService.get();
+      if (data) {
+        setLeaveLimits({
+          casual_leave: data.casual_leave,
+          sick_leave: data.sick_leave,
+          earned_leave: data.earned_leave // Map based on DB/API field names usually
+        });
+      }
+      return data;
+    },
+    enabled: isHR && isSettingsOpen,
+  });
+
+  // Update Leave Limits Mutation
+  const updateLimitsMutation = useMutation({
+    mutationFn: (data: any) => leaveLimitService.update(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leave-limits'] });
+      setIsSettingsOpen(false);
+      toast.success('Leave limits updated successfully');
+    },
+    onError: (error: any) => toast.error('Failed to update leave limits'),
   });
 
   // Fetch leave balances
@@ -96,6 +127,11 @@ export default function Leaves() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     applyMutation.mutate(formData);
+  };
+
+  const handleUpdateLimits = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateLimitsMutation.mutate(leaveLimits);
   };
 
   const myLeaves = leaves.filter((l: any) => l.employee_id === user?.id);
@@ -191,21 +227,27 @@ export default function Leaves() {
 
   return (
     <MainLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 sm:space-y-6 animate-fade-in">
         <PageHeader title="Leaves" description={isHR ? 'Manage employee leave requests' : 'Apply and track your leaves'}>
           {!isHR && <Button onClick={() => setIsDialogOpen(true)}><Plus className="w-4 h-4 mr-2" />Apply Leave</Button>}
+          {isHR && (
+            <Button variant="outline" onClick={() => setIsSettingsOpen(true)}>
+              <Settings className="w-4 h-4 mr-2" />
+              Settings
+            </Button>
+          )}
         </PageHeader>
 
         {/* ... existing Cards ... */}
         {!isHR && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {myBalances.map((balance: any) => (
               <Card key={balance.leave_type}>
                 <CardContent className="pt-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground capitalize">{balance.leave_type}</p>
-                      <p className="text-2xl font-bold">{balance.remaining}</p>
+                      <p className="text-xl sm:text-2xl font-bold">{balance.remaining}</p>
                       <p className="text-xs text-muted-foreground">of {balance.total} days</p>
                     </div>
                     <CalendarDays className="w-8 h-8 text-primary/20" />
@@ -220,16 +262,16 @@ export default function Leaves() {
         )}
 
         {isHR && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center"><Clock className="w-5 h-5 text-warning" /></div><div><p className="text-2xl font-bold">{leaves.filter((l: any) => l.status === 'pending').length}</p><p className="text-xs text-muted-foreground">Pending</p></div></div></CardContent></Card>
-            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center"><Check className="w-5 h-5 text-success" /></div><div><p className="text-2xl font-bold">{leaves.filter((l: any) => l.status === 'approved').length}</p><p className="text-xs text-muted-foreground">Approved</p></div></div></CardContent></Card>
-            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center"><X className="w-5 h-5 text-destructive" /></div><div><p className="text-2xl font-bold">{leaves.filter((l: any) => l.status === 'rejected').length}</p><p className="text-xs text-muted-foreground">Rejected</p></div></div></CardContent></Card>
-            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-info/10 flex items-center justify-center"><Clock className="w-5 h-5 text-info" /></div><div><p className="text-2xl font-bold">{leaves.filter((l: any) => l.status === 'approved' && new Date(l.start_date) <= new Date() && new Date(l.end_date) >= new Date()).length}</p><p className="text-xs text-muted-foreground">On Leave Now</p></div></div></CardContent></Card>
+          <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center"><Clock className="w-5 h-5 text-warning" /></div><div><p className="text-xl sm:text-2xl font-bold">{leaves.filter((l: any) => l.status === 'pending').length}</p><p className="text-xs text-muted-foreground">Pending</p></div></div></CardContent></Card>
+            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center"><Check className="w-5 h-5 text-success" /></div><div><p className="text-xl sm:text-2xl font-bold">{leaves.filter((l: any) => l.status === 'approved').length}</p><p className="text-xs text-muted-foreground">Approved</p></div></div></CardContent></Card>
+            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center"><X className="w-5 h-5 text-destructive" /></div><div><p className="text-xl sm:text-2xl font-bold">{leaves.filter((l: any) => l.status === 'rejected').length}</p><p className="text-xs text-muted-foreground">Rejected</p></div></div></CardContent></Card>
+            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-info/10 flex items-center justify-center"><Clock className="w-5 h-5 text-info" /></div><div><p className="text-xl sm:text-2xl font-bold">{leaves.filter((l: any) => l.status === 'approved' && new Date(l.start_date) <= new Date() && new Date(l.end_date) >= new Date()).length}</p><p className="text-xs text-muted-foreground">On Leave Now</p></div></div></CardContent></Card>
           </div>
         )}
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-full sm:w-[150px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -240,21 +282,23 @@ export default function Leaves() {
           </SelectContent>
         </Select>
 
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader><CardTitle className="text-base">{isHR ? 'Leave Requests' : 'My Leave Requests'}</CardTitle></CardHeader>
-          <CardContent>
-            <DataTable
-              columns={isHR ? hrColumns : employeeColumns}
-              data={isHR ? leaves : myLeaves.filter((l: any) => statusFilter === 'all' || l.status === statusFilter)}
-              keyExtractor={(leave: any) => leave.id}
-              emptyMessage="No leave requests found"
-            />
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <DataTable
+                columns={isHR ? hrColumns : employeeColumns}
+                data={isHR ? leaves : myLeaves.filter((l: any) => statusFilter === 'all' || l.status === statusFilter)}
+                keyExtractor={(leave: any) => leave.id}
+                emptyMessage="No leave requests found"
+              />
+            </div>
           </CardContent>
         </Card>
 
         {/* Apply Leave Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Apply for Leave</DialogTitle>
               <DialogDescription>Submit a new leave request.</DialogDescription>
@@ -266,12 +310,12 @@ export default function Leaves() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="sick">Sick Leave</SelectItem>
-                    <SelectItem value="privilege">Privilege Leave</SelectItem>
+                    <SelectItem value="earned">Privilege / Earned Leave</SelectItem>
                     <SelectItem value="casual">Casual Leave</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Start Date</Label>
                   <Input type="date" value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} required />
@@ -288,6 +332,57 @@ export default function Leaves() {
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={applyMutation.isPending}>{applyMutation.isPending ? 'Submitting...' : 'Submit Request'}</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Leave Limits Settings Dialog - HR Only */}
+        <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Leave Policy Settings</DialogTitle>
+              <DialogDescription>Set the annual leave limits for all employees.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleUpdateLimits} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="casual">Casual Leave (Days/Year)</Label>
+                <Input
+                  id="casual"
+                  type="number"
+                  min="0"
+                  value={leaveLimits.casual_leave}
+                  onChange={(e) => setLeaveLimits({ ...leaveLimits, casual_leave: Number(e.target.value) })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sick">Sick Leave (Days/Year)</Label>
+                <Input
+                  id="sick"
+                  type="number"
+                  min="0"
+                  value={leaveLimits.sick_leave}
+                  onChange={(e) => setLeaveLimits({ ...leaveLimits, sick_leave: Number(e.target.value) })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="earned">Earned/Privilege Leave (Days/Year)</Label>
+                <Input
+                  id="earned"
+                  type="number"
+                  min="0"
+                  value={leaveLimits.earned_leave}
+                  onChange={(e) => setLeaveLimits({ ...leaveLimits, earned_leave: Number(e.target.value) })}
+                  required
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsSettingsOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={updateLimitsMutation.isPending}>
+                  {updateLimitsMutation.isPending ? 'Saving...' : 'Save Settings'}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>

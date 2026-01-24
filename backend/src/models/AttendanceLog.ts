@@ -11,6 +11,8 @@ export interface AttendanceLogAttributes {
     work_hours?: number;
     notes?: string;
     is_locked: boolean;
+    edited_by?: string;
+    edit_reason?: string;
     created_at?: Date;
     updated_at?: Date;
 }
@@ -27,6 +29,8 @@ class AttendanceLog extends Model<AttendanceLogAttributes, AttendanceLogCreation
     public work_hours?: number;
     public notes?: string;
     public is_locked!: boolean;
+    public edited_by?: string;
+    public edit_reason?: string;
 
     public readonly created_at!: Date;
     public readonly updated_at!: Date;
@@ -72,6 +76,14 @@ AttendanceLog.init(
             type: DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: false,
+        },
+        edited_by: {
+            type: DataTypes.UUID,
+            allowNull: true,
+        },
+        edit_reason: {
+            type: DataTypes.TEXT,
+            allowNull: true,
         },
     },
     {

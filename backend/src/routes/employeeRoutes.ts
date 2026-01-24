@@ -10,6 +10,8 @@ router.get('/', authenticate, requireHR, asyncHandler(employeeController.getAllE
 router.get('/:id', authenticate, requireSelfOrHR('id'), asyncHandler(employeeController.getEmployeeById));
 router.post('/', authenticate, requireHR, auditLog('employees', 'create'), asyncHandler(employeeController.createEmployee));
 router.put('/:id', authenticate, requireSelfOrHR('id'), auditLog('employees', 'update'), asyncHandler(employeeController.updateEmployee));
+router.post('/:id/terminate', authenticate, requireHR, auditLog('employees', 'terminate'), asyncHandler(employeeController.terminateEmployee));
 router.delete('/:id', authenticate, requireHR, auditLog('employees', 'delete'), asyncHandler(employeeController.deleteEmployee));
+router.delete('/:id/permanent', authenticate, requireHR, auditLog('employees', 'permanent_delete'), asyncHandler(employeeController.permanentlyDeleteEmployee));
 
 export default router;

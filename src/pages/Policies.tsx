@@ -213,7 +213,7 @@ export default function Policies() {
 
   return (
     <MainLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 sm:space-y-6 animate-fade-in">
         <PageHeader title="Company Policies" description="View and manage company policies">
           {isHR && (
             <Button onClick={openCreateDialog}>
@@ -223,23 +223,23 @@ export default function Policies() {
           )}
         </PageHeader>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">Total Policies</p>
-            <p className="text-2xl font-bold">{policies.length}</p>
+            <p className="text-xl sm:text-2xl font-bold">{policies.length}</p>
           </div>
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">Active</p>
-            <p className="text-2xl font-bold">{policies.filter((p: any) => p.is_active).length}</p>
+            <p className="text-xl sm:text-2xl font-bold">{policies.filter((p: any) => p.is_active).length}</p>
           </div>
           <div className="p-4 rounded-xl bg-card border">
             <p className="text-sm text-muted-foreground">Categories</p>
-            <p className="text-2xl font-bold">{new Set(policies.map((p: any) => p.category)).size}</p>
+            <p className="text-xl sm:text-2xl font-bold">{new Set(policies.map((p: any) => p.category)).size}</p>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+          <div className="relative w-full sm:flex-1 sm:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search policies..."
@@ -249,7 +249,7 @@ export default function Policies() {
             />
           </div>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -271,7 +271,7 @@ export default function Policies() {
 
         {/* Create/Edit Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="sm:max-w-xl">
+          <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedPolicy ? 'Edit Policy' : 'Add Policy'}</DialogTitle>
               <DialogDescription>
@@ -289,7 +289,7 @@ export default function Policies() {
                   required
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
                   <Select

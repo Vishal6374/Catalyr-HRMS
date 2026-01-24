@@ -180,13 +180,13 @@ export default function Profile() {
 
   return (
     <MainLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 sm:space-y-6 animate-fade-in">
         <PageHeader title="My Profile" description="View and manage your personal information" />
 
         {/* Profile Header Card */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
               <div className="relative">
                 <Avatar className="w-24 h-24 border-4 border-background shadow-lg">
                   <AvatarImage src={employee.avatar_url} alt={employee.name} />
@@ -197,20 +197,20 @@ export default function Profile() {
                 </button>
               </div>
               <div className="flex-1">
-                <div className="flex items-start justify-between">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-3 sm:gap-0 w-full sm:w-auto">
                   <div>
                     <h2 className="text-2xl font-bold">{employee.name}</h2>
                     <p className="text-muted-foreground">{employee.designation?.name}</p>
                     <p className="text-sm text-muted-foreground">{employee.department?.name}</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={employee.status} />
                     <span className="text-sm text-muted-foreground px-2 py-1 bg-muted rounded-md">
                       {employee.employee_id}
                     </span>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-4 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4 w-full">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Mail className="w-4 h-4" />
                     {employee.email}
@@ -231,7 +231,7 @@ export default function Profile() {
 
         {/* Profile Tabs */}
         <Tabs defaultValue="personal" className="space-y-6">
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="personal">Personal Info</TabsTrigger>
             <TabsTrigger value="employment">Employment</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -260,7 +260,7 @@ export default function Profile() {
                 )}
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <User className="w-4 h-4 text-muted-foreground" />
@@ -327,7 +327,7 @@ export default function Profile() {
                 <CardTitle className="text-base">Employment Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <div className="p-4 rounded-lg bg-muted/50 space-y-1">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Building2 className="w-4 h-4" />
@@ -398,7 +398,7 @@ export default function Profile() {
                     <Loader2 className="w-6 h-6 animate-spin text-primary" />
                   </div>
                 ) : documents.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     {documents.map((doc: any) => (
                       <div key={doc.id} className="p-4 rounded-lg border flex items-center justify-between hover:bg-muted/50 transition-colors">
                         <div className="flex items-center gap-4 flex-1">
@@ -409,8 +409,8 @@ export default function Profile() {
                             <p className="font-medium truncate">{doc.document_type}</p>
                             <p className="text-sm text-muted-foreground truncate">{doc.file_name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {doc.created_at && !isNaN(new Date(doc.created_at).getTime()) 
-                                ? format(new Date(doc.created_at), 'MMM d, yyyy') 
+                              {doc.created_at && !isNaN(new Date(doc.created_at).getTime())
+                                ? format(new Date(doc.created_at), 'MMM d, yyyy')
                                 : 'N/A'}
                             </p>
                           </div>

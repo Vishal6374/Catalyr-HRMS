@@ -28,8 +28,12 @@ export const employeeService = {
         api.post('/employees', data),
     update: (id: string, data: any) =>
         api.put(`/employees/${id}`, data),
+    terminate: (id: string, data: any) =>
+        api.post(`/employees/${id}/terminate`, data),
     delete: (id: string) =>
         api.delete(`/employees/${id}`),
+    permanentDelete: (id: string) =>
+        api.delete(`/employees/${id}/permanent`),
 };
 
 // Department Services
@@ -68,8 +72,14 @@ export const attendanceService = {
         api.get('/attendance/summary', { params }),
     mark: (data: any) =>
         api.post('/attendance/mark', data),
+    update: (id: string, data: any) =>
+        api.put(`/attendance/update/${id}`, data),
     lock: (month: number, year: number) =>
         api.post('/attendance/lock', { month, year }),
+    getSettings: () =>
+        api.get('/attendance/settings'),
+    updateSettings: (data: any) =>
+        api.put('/attendance/settings', data),
 };
 
 // Leave Services
@@ -88,22 +98,41 @@ export const leaveService = {
         api.post(`/leaves/cancel/${id}`),
 };
 
+// Leave Limits Services
+export const leaveLimitService = {
+    get: () =>
+        api.get('/leave-limits'),
+    update: (data: { casual_leave?: number; sick_leave?: number; earned_leave?: number }) =>
+        api.put('/leave-limits', data),
+};
+
 // Payroll Services
 export const payrollService = {
+    // Get batches
     getBatches: () =>
         api.get('/payroll/batches'),
+
+    // Get salary slips
     getSlips: (params?: any) =>
         api.get('/payroll/slips', { params }),
-    generate: (month: number, year: number) =>
-        api.post('/payroll/generate', { month, year }),
+
+    // Preview payroll before processing
+    preview: (data: { month: number; year: number; employee_ids: string[] }) =>
+        api.post('/payroll/preview', data),
+
+    // Process payroll
+    process: (data: {
+        month: number;
+        year: number;
+        employee_ids: string[];
+        bonuses?: Record<string, number>;
+        deductions?: Record<string, number>;
+    }) =>
+        api.post('/payroll/process', data),
+
+    // Mark batch as paid
     markPaid: (id: string) =>
-        api.post(`/payroll/mark-paid/${id}`),
-    getStats: () =>
-        api.get('/payroll/stats'),
-    createSlip: (data: any) =>
-        api.post('/payroll/create', data),
-    updateSlip: (id: string, data: any) =>
-        api.put(`/payroll/update/${id}`, data),
+        api.post(`/payroll/batches/${id}/mark-paid`),
 
     // Salary Structure
     getSalaryStructures: () =>

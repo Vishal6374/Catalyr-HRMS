@@ -33,7 +33,12 @@ export const getAttendanceLogs = async (req: AuthRequest, res: Response): Promis
     const logs = await AttendanceLog.findAll({
         where,
         include: [
-            { association: 'employee', attributes: ['id', 'name', 'email', 'employee_id'] },
+            {
+                association: 'employee',
+                attributes: ['id', 'name', 'email', 'employee_id', 'status'],
+                where: { status: { [Op.ne]: 'terminated' } }, // Exclude terminated employees
+                required: true // Inner join to exclude logs of terminated employees
+            },
         ],
         order: [['date', 'DESC']],
     });
@@ -68,19 +73,46 @@ export const markAttendance = async (req: AuthRequest, res: Response): Promise<v
             throw new AppError(400, 'Attendance is locked for this date');
         }
 
-        // Calculate work hours if both check_in and check_out are provided
-        let workHours: number | undefined;
-        if (check_in && check_out) {
-            workHours = calculateWorkHours(new Date(check_in), new Date(check_out));
+        // Get attendance settings
+        const AttendanceSettings = (await import('../models/AttendanceSettings')).default;
+        let settings = await AttendanceSettings.findOne();
+        if (!settings) {
+            settings = await AttendanceSettings.create({
+                standard_work_hours: 8.00,
+                half_day_threshold: 4.00,
+            });
         }
 
-        // Determine status if not provided
+        // Calculate work hours
+        // Use provided check_in OR existing check_in
+        const actualCheckIn = check_in ? new Date(check_in) : existingLog?.check_in;
+        // Use provided check_out OR existing check_out
+        const actualCheckOut = check_out ? new Date(check_out) : existingLog?.check_out;
+
+        let workHours: number | undefined;
+        if (actualCheckIn && actualCheckOut) {
+            workHours = calculateWorkHours(actualCheckIn, actualCheckOut);
+        }
+
+        // Determine status based on settings
         let attendanceStatus = status;
-        if (!attendanceStatus) {
+
+        // Auto-calculate status if we have enough info and status isn't forced by HR
+        if (!attendanceStatus && actualCheckIn && actualCheckOut && workHours !== undefined) {
+            // Use settings to determine status
+            if (workHours < settings.half_day_threshold) {
+                attendanceStatus = 'absent';
+            } else if (workHours >= settings.half_day_threshold && workHours < settings.standard_work_hours) {
+                attendanceStatus = 'half_day';
+            } else {
+                attendanceStatus = 'present';
+            }
+        } else if (!attendanceStatus) {
             if (isWeekend(new Date(attendanceDate))) {
                 attendanceStatus = 'weekend';
-            } else if (check_in && check_out) {
-                attendanceStatus = (workHours || 0) >= 8 ? 'present' : 'half_day';
+            } else if (check_in && !check_out) {
+                // If only clocking in, assume present until clock out (or set initial status)
+                attendanceStatus = 'present';
             } else {
                 attendanceStatus = 'absent';
             }
@@ -109,6 +141,96 @@ export const markAttendance = async (req: AuthRequest, res: Response): Promise<v
             // Send the actual error message for debugging
             res.status(500).json({
                 message: 'Internal server error marking attendance',
+                error: error.message || String(error)
+            });
+        }
+    }
+};
+
+export const updateAttendance = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        // Only HR can update attendance
+        if (req.user?.role !== 'hr') {
+            throw new AppError(403, 'Only HR can update attendance records');
+        }
+
+        const { id } = req.params;
+        const { employee_id, date, check_in, check_out, status, notes, edit_reason } = req.body;
+
+        // Find existing attendance record
+        const attendance = await AttendanceLog.findByPk(String(id));
+
+        if (!attendance) {
+            throw new AppError(404, 'Attendance record not found');
+        }
+
+        // Check if attendance is locked
+        if (attendance.is_locked) {
+            throw new AppError(400, 'Attendance is locked and cannot be edited');
+        }
+
+        // Get attendance settings
+        const AttendanceSettings = (await import('../models/AttendanceSettings')).default;
+        let settings = await AttendanceSettings.findOne();
+        if (!settings) {
+            settings = await AttendanceSettings.create({
+                standard_work_hours: 8.00,
+                half_day_threshold: 4.00,
+            });
+        }
+
+        // Calculate work hours if both check_in and check_out are provided
+        let workHours: number | undefined;
+        const newCheckIn = check_in ? new Date(check_in) : attendance.check_in;
+        const newCheckOut = check_out ? new Date(check_out) : attendance.check_out;
+
+        if (newCheckIn && newCheckOut) {
+            workHours = calculateWorkHours(newCheckIn, newCheckOut);
+        }
+
+        // Determine status based on settings
+        // If status is explicitly provided, use it (manual override)
+        // Otherwise, always recalculate based on work hours
+        let attendanceStatus = status;
+
+        if (!status && newCheckIn && newCheckOut && workHours !== undefined) {
+            // Auto-calculate status based on work hours
+            if (workHours < settings.half_day_threshold) {
+                attendanceStatus = 'absent';
+            } else if (workHours >= settings.half_day_threshold && workHours < settings.standard_work_hours) {
+                attendanceStatus = 'half_day';
+            } else {
+                attendanceStatus = 'present';
+            }
+        } else if (!status) {
+            // If no times provided and no status override, keep existing status
+            attendanceStatus = attendance.status;
+        }
+
+        // Update attendance record
+        await attendance.update({
+            employee_id: employee_id || attendance.employee_id,
+            date: date ? (new Date(date).toISOString().split('T')[0] as unknown as Date) : attendance.date,
+            check_in: check_in ? new Date(check_in) : attendance.check_in,
+            check_out: check_out ? new Date(check_out) : attendance.check_out,
+            status: attendanceStatus,
+            work_hours: workHours !== undefined ? workHours : attendance.work_hours,
+            notes: notes !== undefined ? notes : attendance.notes,
+            edited_by: req.user?.id,
+            edit_reason: edit_reason || 'Manual edit by HR',
+        });
+
+        res.json({
+            message: 'Attendance updated successfully',
+            attendance,
+        });
+    } catch (error: any) {
+        console.error('Error in updateAttendance:', error);
+        if (error instanceof AppError) {
+            res.status(error.statusCode).json({ message: error.message });
+        } else {
+            res.status(500).json({
+                message: 'Internal server error updating attendance',
                 error: error.message || String(error)
             });
         }

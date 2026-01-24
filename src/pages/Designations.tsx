@@ -216,7 +216,7 @@ export default function Designations() {
 
   return (
     <MainLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 sm:space-y-6 animate-fade-in">
         <PageHeader title="Designations" description="Manage job titles and hierarchy">
           <Button onClick={openCreateDialog}>
             <Plus className="w-4 h-4 mr-2" />
@@ -224,8 +224,8 @@ export default function Designations() {
           </Button>
         </PageHeader>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+          <div className="relative w-full sm:flex-1 sm:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search designations..."
@@ -235,7 +235,7 @@ export default function Designations() {
             />
           </div>
           <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="Filter by department" />
             </SelectTrigger>
             <SelectContent>
@@ -258,7 +258,7 @@ export default function Designations() {
 
         {/* Create/Edit Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedDesignation ? 'Edit Designation' : 'Add Designation'}</DialogTitle>
               <DialogDescription>Define job roles and hierarchy levels.</DialogDescription>
@@ -293,7 +293,7 @@ export default function Designations() {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="level">Level (1-10)</Label>
                   <Select
@@ -327,7 +327,7 @@ export default function Designations() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="min">Min Salary</Label>
                   <Input
