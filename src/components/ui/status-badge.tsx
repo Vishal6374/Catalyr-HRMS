@@ -24,6 +24,7 @@ const statusToVariant: Record<string, StatusVariant> = {
   present: 'success', absent: 'destructive', half_day: 'warning', holiday: 'info', weekend: 'muted',
   open: 'warning', in_progress: 'info', resolved: 'success', closed: 'muted',
   low: 'muted', medium: 'warning', high: 'destructive', urgent: 'destructive',
+  locked: 'info', withdrawn: 'muted',
 };
 
 export function StatusBadge({ status, variant, className }: StatusBadgeProps) {

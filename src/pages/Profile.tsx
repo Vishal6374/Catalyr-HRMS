@@ -121,6 +121,15 @@ export default function Profile() {
     }
   });
 
+  const { data: documents = [] } = useQuery({
+    queryKey: ['documents', user?.id],
+    queryFn: async () => {
+      const { data } = await employeeDocumentService.getDocuments(user?.id as string);
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (documentId: string) => employeeDocumentService.deleteDocument(documentId),
     onSuccess: () => {
@@ -511,9 +520,47 @@ export default function Profile() {
                 </Button>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Document list implementation */}
-                </div>
+                {documents.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {documents.map((doc: any) => (
+                      <div key={doc.id} className="p-4 rounded-xl border bg-card flex items-start gap-4 group">
+                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                          <FileText className="w-6 h-6" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold truncate" title={doc.document_type}>{doc.document_type}</p>
+                          <p className="text-xs text-muted-foreground truncate" title={doc.file_name}>{doc.file_name}</p>
+                          <p className="text-[10px] text-muted-foreground mt-1">Uploaded {format(new Date(doc.createdAt), 'MMM dd, yyyy')}</p>
+                        </div>
+                        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                            <a href={getBackendUrl(doc.file_url)} target="_blank" rel="noopener noreferrer">
+                              <Eye className="w-4 h-4" />
+                            </a>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => {
+                              setSelectedDocument(doc);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                            disabled={isLocked}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-12 bg-muted/20 border-2 border-dashed rounded-2xl text-center">
+                    <FileText className="w-10 h-10 text-muted-foreground mb-4 opacity-20" />
+                    <h3 className="text-lg font-semibold">No documents uploaded</h3>
+                    <p className="text-sm text-muted-foreground max-w-[250px]">Upload your ID proofs, certificates, and other documents here.</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
