@@ -6,25 +6,20 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { CalendarCheck, Clock, UserCheck, UserX, TrendingUp, X, Edit, Settings } from 'lucide-react';
+import { CalendarCheck, Clock, UserCheck, UserX, TrendingUp, X, Edit, Settings, AlertCircle, Check, X as XIcon } from 'lucide-react';
 import { format, isSameDay, eachDayOfInterval, startOfMonth, endOfMonth, isWeekend, isBefore, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
-import { attendanceService, employeeService, holidayService } from '@/services/apiService';
+import { attendanceService, employeeService, holidayService, regularizationService } from '@/services/apiService';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AttendanceEditModal } from '@/components/attendance/AttendanceEditModal';
 import { AttendanceSettings } from '@/components/attendance/AttendanceSettings';
 import { MarkAttendanceModal } from '@/components/attendance/MarkAttendanceModal';
-<<<<<<< Updated upstream
-=======
 import { PageLoader } from '@/components/ui/page-loader';
 import Loader from '@/components/ui/Loader';
 import { RegularizationModal } from '@/components/attendance/RegularizationModal';
-import { regularizationService } from '@/services/apiService';
-import { AlertCircle, Check, X as XIcon } from 'lucide-react';
->>>>>>> Stashed changes
 
 export default function Attendance() {
   const { isHR, user } = useAuth();
@@ -227,13 +222,7 @@ export default function Attendance() {
   const selectedDateLogs = selectedDate ? getAttendanceForDate(selectedDate) : [];
 
   if (logsLoading) {
-    return (
-      <MainLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Loading attendance...</div>
-        </div>
-      </MainLayout>
-    );
+    return <PageLoader />;
   }
 
   return (
@@ -376,10 +365,21 @@ export default function Attendance() {
                           </div>
                         )}
                         {!attendanceToday.check_out && (
-                          <Button variant="destructive" className="w-full h-12 text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl transition-all" onClick={() => markAttendanceMutation.mutate({ date: format(new Date(), 'yyyy-MM-dd'), check_out: new Date().toISOString() })} disabled={markAttendanceMutation.isPending}>
-                            <Clock className="w-4 h-4 mr-2" />
-                            {markAttendanceMutation.isPending ? 'Processing...' : 'Clock Out'}
-                          </Button>
+                          settings?.allow_self_clock_in ? (
+                            <Button variant="destructive" className="w-full h-12 text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl transition-all" onClick={() => markAttendanceMutation.mutate({ date: format(new Date(), 'yyyy-MM-dd'), check_out: new Date().toISOString() })} disabled={markAttendanceMutation.isPending}>
+                              <Clock className="w-4 h-4 mr-2" />
+                              {markAttendanceMutation.isPending ? (
+                                <span className="flex items-center gap-2">
+                                  <Loader size="small" variant="white" />
+                                  Processing...
+                                </span>
+                              ) : 'Clock Out'}
+                            </Button>
+                          ) : (
+                            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm text-center">
+                              Self clock-out is disabled. Please contact HR.
+                            </div>
+                          )
                         )}
                       </div>
                     ) : (
@@ -388,10 +388,21 @@ export default function Attendance() {
                           <div className="w-3 h-3 rounded-full bg-slate-400" />
                           <p className="text-lg font-semibold text-muted-foreground">Not Clocked In</p>
                         </div>
-                        <Button className="w-full h-12 text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl transition-all" onClick={() => markAttendanceMutation.mutate({ status: 'present', date: format(new Date(), 'yyyy-MM-dd'), check_in: new Date().toISOString() })} disabled={markAttendanceMutation.isPending}>
-                          <UserCheck className="w-5 h-5 mr-2" />
-                          {markAttendanceMutation.isPending ? 'Clocking In...' : 'Clock In'}
-                        </Button>
+                        {settings?.allow_self_clock_in ? (
+                          <Button className="w-full h-12 text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl transition-all" onClick={() => markAttendanceMutation.mutate({ status: 'present', date: format(new Date(), 'yyyy-MM-dd'), check_in: new Date().toISOString() })} disabled={markAttendanceMutation.isPending}>
+                            <UserCheck className="w-5 h-5 mr-2" />
+                            {markAttendanceMutation.isPending ? (
+                              <span className="flex items-center gap-2">
+                                <Loader size="small" variant="white" />
+                                Clocking In...
+                              </span>
+                            ) : 'Clock In'}
+                          </Button>
+                        ) : (
+                          <div className="p-4 bg-muted border rounded-xl text-muted-foreground text-sm text-center w-full">
+                            Self clock-in is currently disabled by HR.
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

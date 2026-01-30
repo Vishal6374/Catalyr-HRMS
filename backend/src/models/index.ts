@@ -14,13 +14,11 @@ import Policy from './Policy';
 import Holiday from './Holiday';
 import AuditLog from './AuditLog';
 import EmployeeDocument from './EmployeeDocument';
-<<<<<<< Updated upstream
-=======
 import Resignation from './Resignation';
 import RegularizationRequest from './RegularizationRequest';
 import TaskLog from './TaskLog';
 import Meeting from './Meeting';
->>>>>>> Stashed changes
+
 // Temporarily disabled to debug server crash
 // import SalaryStructure from './SalaryStructure';
 // import PayGroup from './PayGroup';
@@ -95,34 +93,11 @@ Complaint.belongsTo(User, { foreignKey: 'responded_by', as: 'responder', constra
 // AuditLog - User relationship
 AuditLog.belongsTo(User, { foreignKey: 'performed_by', as: 'performer', constraints: false });
 
-// Temporarily disabled to debug server crash
-/*
-// PayGroup - SalaryStructure relationship
-PayGroup.belongsTo(SalaryStructure, { foreignKey: 'salary_structure_id', as: 'salaryStructure', constraints: false });
-
-// InvestmentDeclaration - User relationship
-InvestmentDeclaration.belongsTo(User, { foreignKey: 'employee_id', as: 'employee', constraints: false });
-InvestmentDeclaration.belongsTo(User, { foreignKey: 'reviewed_by', as: 'reviewer', constraints: false });
-
-// LoanAdvance - User relationship
-LoanAdvance.belongsTo(User, { foreignKey: 'employee_id', as: 'employee', constraints: false });
-LoanAdvance.belongsTo(User, { foreignKey: 'approved_by', as: 'approver', constraints: false });
-
-// FFSettlement - User relationship
-FFSettlement.belongsTo(User, { foreignKey: 'employee_id', as: 'employee', constraints: false });
-FFSettlement.belongsTo(User, { foreignKey: 'processed_by', as: 'processor', constraints: false });
-
-// PayrollAudit - User relationship
-PayrollAudit.belongsTo(User, { foreignKey: 'changed_by', as: 'changedBy', constraints: false });
-*/
-
 // EmployeeDocument - User relationships
 EmployeeDocument.belongsTo(User, { foreignKey: 'employee_id', as: 'employee', constraints: false });
 User.hasMany(EmployeeDocument, { foreignKey: 'employee_id', as: 'documents', constraints: false });
 EmployeeDocument.belongsTo(User, { foreignKey: 'uploaded_by', as: 'uploader', constraints: false });
 
-<<<<<<< Updated upstream
-=======
 // Resignation - User relationships
 Resignation.belongsTo(User, { foreignKey: 'employee_id', as: 'employee', constraints: false });
 User.hasMany(Resignation, { foreignKey: 'employee_id', as: 'resignations', constraints: false });
@@ -139,7 +114,6 @@ User.hasMany(TaskLog, { foreignKey: 'employee_id', as: 'taskLogs', constraints: 
 // Meeting - User relationships
 Meeting.belongsTo(User, { foreignKey: 'created_by', as: 'creator', constraints: false });
 
->>>>>>> Stashed changes
 export {
     User,
     Department,
@@ -157,21 +131,10 @@ export {
     Holiday,
     AuditLog,
     EmployeeDocument,
-<<<<<<< Updated upstream
-=======
     Resignation,
     RegularizationRequest,
     TaskLog,
     Meeting,
->>>>>>> Stashed changes
-    // Temporarily disabled
-    // SalaryStructure,
-    // PayGroup,
-    // TaxSlab,
-    // InvestmentDeclaration,
-    // LoanAdvance,
-    // FFSettlement,
-    // PayrollAudit,
 };
 
 export default {
@@ -191,19 +154,8 @@ export default {
     Holiday,
     AuditLog,
     EmployeeDocument,
-<<<<<<< Updated upstream
-=======
     Resignation,
     RegularizationRequest,
     TaskLog,
     Meeting,
->>>>>>> Stashed changes
-    // Temporarily disabled
-    // SalaryStructure,
-    // PayGroup,
-    // TaxSlab,
-    // InvestmentDeclaration,
-    // LoanAdvance,
-    // FFSettlement,
-    // PayrollAudit,
 };

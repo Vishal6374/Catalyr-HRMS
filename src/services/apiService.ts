@@ -278,8 +278,6 @@ export const employeeDocumentService = {
     deleteDocument: (documentId: string) =>
         api.delete(`/employees/documents/${documentId}`),
 };
-<<<<<<< Updated upstream
-=======
 
 // Resignation Services
 export const resignationService = {
@@ -334,4 +332,3 @@ export const meetingService = {
     delete: (id: string) =>
         api.delete(`/meetings/${id}`),
 };
->>>>>>> Stashed changes

@@ -10,20 +10,19 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Employee } from '@/types/hrms';
-<<<<<<< Updated upstream
-import { Search, UserPlus, Eye, Pencil, Loader2, UserX } from 'lucide-react';
-=======
 import { Search, UserPlus, Eye, Pencil, UserX, CheckCircle2 } from 'lucide-react';
->>>>>>> Stashed changes
 import { useAuth } from '@/contexts/AuthContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { employeeService, departmentService, designationService } from '@/services/apiService';
 import { toast } from 'sonner';
 import { TerminateEmployeeModal } from '@/components/employees/TerminateEmployeeModal';
+import { PageLoader } from '@/components/ui/page-loader';
+import Loader from '@/components/ui/Loader';
 
 export default function Employees() {
   const { isHR } = useAuth();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('active'); // Default to active only
@@ -36,13 +35,11 @@ export default function Employees() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
     department_id: '',
     designation_id: '',
     role: 'employee',
     status: 'active',
-<<<<<<< Updated upstream
-    password: 'password123' // Default password for new users
-=======
     salary: '',
     address: '',
     bank_name: '',
@@ -51,7 +48,6 @@ export default function Employees() {
     branch_name: '',
     password: '',
     onboarding_status: 'pending'
->>>>>>> Stashed changes
   });
 
   const queryClient = useQueryClient();
@@ -84,18 +80,6 @@ export default function Employees() {
     queryFn: async () => { const { data } = await designationService.getAll(); return data; }
   });
 
-  // Mutations
-  const createMutation = useMutation({
-    mutationFn: employeeService.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
-      setIsDialogOpen(false);
-      toast.success('Employee created successfully');
-      resetForm();
-    },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to create employee'),
-  });
-
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: any) => employeeService.update(id, data),
     onSuccess: () => {
@@ -123,13 +107,11 @@ export default function Employees() {
     setFormData({
       name: '',
       email: '',
+      phone: '',
       department_id: '',
       designation_id: '',
       role: 'employee',
       status: 'active',
-<<<<<<< Updated upstream
-      password: 'password123'
-=======
       salary: '',
       address: '',
       bank_name: '',
@@ -138,13 +120,11 @@ export default function Employees() {
       branch_name: '',
       password: '',
       onboarding_status: 'pending'
->>>>>>> Stashed changes
     });
   };
 
   const openCreateDialog = () => {
-    resetForm();
-    setIsDialogOpen(true);
+    navigate('/employees/new');
   };
 
   const openEditDialog = (emp: any) => {
@@ -152,13 +132,11 @@ export default function Employees() {
     setFormData({
       name: emp.name,
       email: emp.email,
+      phone: emp.phone || '',
       department_id: emp.department_id || '',
       designation_id: emp.designation_id || '',
       role: emp.role,
       status: emp.status,
-<<<<<<< Updated upstream
-      password: '' // Don't fill password on edit
-=======
       salary: emp.salary || '',
       address: emp.address || '',
       bank_name: emp.bank_name || '',
@@ -167,7 +145,6 @@ export default function Employees() {
       branch_name: emp.branch_name || '',
       password: '',
       onboarding_status: emp.onboarding_status || 'pending'
->>>>>>> Stashed changes
     });
     setIsDialogOpen(true);
   };
@@ -175,12 +152,10 @@ export default function Employees() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const payload = { ...formData };
-    if (!payload.password) delete (payload as any).password; // Don't send empty password
+    if (!payload.password) delete (payload as any).password;
 
     if (selectedEmployee) {
       updateMutation.mutate({ id: selectedEmployee.id, data: payload });
-    } else {
-      createMutation.mutate(payload);
     }
   };
 
@@ -248,13 +223,7 @@ export default function Employees() {
   ];
 
   if (isLoading) {
-    return (
-      <MainLayout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      </MainLayout>
-    );
+    return <PageLoader />;
   }
 
   return (
@@ -400,6 +369,7 @@ export default function Employees() {
                     <SelectContent>
                       <SelectItem value="employee">Employee</SelectItem>
                       <SelectItem value="hr">HR Administrator</SelectItem>
+                      <SelectItem value="admin">System Admin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -435,9 +405,9 @@ export default function Employees() {
 
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                  {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  {selectedEmployee ? 'Update Employee' : 'Create Employee'}
+                <Button type="submit" disabled={updateMutation.isPending}>
+                  {updateMutation.isPending && <Loader size="small" variant="white" className="mr-2" />}
+                  Update Employee
                 </Button>
               </DialogFooter>
             </form>
