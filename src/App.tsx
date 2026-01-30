@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import Departments from "./pages/Departments";
 import Designations from "./pages/Designations";
 import Employees from "./pages/Employees";
+import AddEmployee from "./pages/AddEmployee";
 import Attendance from "./pages/Attendance";
 import PayrollUnified from "./pages/PayrollUnified";
 import Leaves from "./pages/Leaves";
@@ -19,6 +20,7 @@ import Reimbursements from "./pages/Reimbursements";
 import Complaints from "./pages/Complaints";
 import Policies from "./pages/Policies";
 import Holidays from "./pages/Holidays";
+import Resignations from "./pages/Resignations";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -58,6 +60,7 @@ function AppRoutes() {
       <Route path="/departments" element={<ProtectedRoute><Departments /></ProtectedRoute>} />
       <Route path="/designations" element={<ProtectedRoute><Designations /></ProtectedRoute>} />
       <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
+      <Route path="/employees/new" element={<ProtectedRoute><AddEmployee /></ProtectedRoute>} />
       <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
       <Route path="/payroll" element={<ProtectedRoute><PayrollUnified /></ProtectedRoute>} />
       <Route path="/leaves" element={<ProtectedRoute><Leaves /></ProtectedRoute>} />
