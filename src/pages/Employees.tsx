@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Employee } from '@/types/hrms';
-import { Search, UserPlus, Eye, Pencil, Loader2, UserX } from 'lucide-react';
+import { Search, UserPlus, Eye, Pencil, UserX } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -18,6 +18,7 @@ import { employeeService, departmentService, designationService } from '@/servic
 import { toast } from 'sonner';
 import { TerminateEmployeeModal } from '@/components/employees/TerminateEmployeeModal';
 import { PageLoader } from '@/components/ui/page-loader';
+import Loader from '@/components/ui/Loader';
 
 export default function Employees() {
   const { isHR } = useAuth();
@@ -382,7 +383,7 @@ export default function Employees() {
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                  {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {(createMutation.isPending || updateMutation.isPending) && <Loader size="small" variant="white" className="mr-2" />}
                   {selectedEmployee ? 'Update Employee' : 'Create Employee'}
                 </Button>
               </DialogFooter>

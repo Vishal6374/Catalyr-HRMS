@@ -18,13 +18,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, Briefcase, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Search, Briefcase, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { designationService, departmentService } from '@/services/apiService';
 import { toast } from 'sonner';
 import { PageLoader } from '@/components/ui/page-loader';
+import Loader from '@/components/ui/Loader';
 
 export default function Designations() {
   const { isHR } = useAuth();
@@ -362,7 +363,7 @@ export default function Designations() {
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                  {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {(createMutation.isPending || updateMutation.isPending) && <Loader size="small" variant="white" className="mr-2" />}
                   {selectedDesignation ? 'Update' : 'Create'}
                 </Button>
               </DialogFooter>

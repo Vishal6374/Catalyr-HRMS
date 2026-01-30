@@ -18,6 +18,7 @@ import { AttendanceEditModal } from '@/components/attendance/AttendanceEditModal
 import { AttendanceSettings } from '@/components/attendance/AttendanceSettings';
 import { MarkAttendanceModal } from '@/components/attendance/MarkAttendanceModal';
 import { PageLoader } from '@/components/ui/page-loader';
+import Loader from '@/components/ui/Loader';
 
 export default function Attendance() {
   const { isHR, user } = useAuth();
@@ -258,7 +259,12 @@ export default function Attendance() {
                         {!attendanceToday.check_out && (
                           <Button variant="destructive" className="w-full h-12 text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl transition-all" onClick={() => markAttendanceMutation.mutate({ date: format(new Date(), 'yyyy-MM-dd'), check_out: new Date().toISOString() })} disabled={markAttendanceMutation.isPending}>
                             <Clock className="w-4 h-4 mr-2" />
-                            {markAttendanceMutation.isPending ? 'Processing...' : 'Clock Out'}
+                            {markAttendanceMutation.isPending ? (
+                              <span className="flex items-center gap-2">
+                                <Loader size="small" variant="white" />
+                                Processing...
+                              </span>
+                            ) : 'Clock Out'}
                           </Button>
                         )}
                       </div>
@@ -270,7 +276,12 @@ export default function Attendance() {
                         </div>
                         <Button className="w-full h-12 text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl transition-all" onClick={() => markAttendanceMutation.mutate({ status: 'present', date: format(new Date(), 'yyyy-MM-dd'), check_in: new Date().toISOString() })} disabled={markAttendanceMutation.isPending}>
                           <UserCheck className="w-5 h-5 mr-2" />
-                          {markAttendanceMutation.isPending ? 'Clocking In...' : 'Clock In'}
+                          {markAttendanceMutation.isPending ? (
+                            <span className="flex items-center gap-2">
+                              <Loader size="small" variant="white" />
+                              Clocking In...
+                            </span>
+                          ) : 'Clock In'}
                         </Button>
                       </div>
                     )}

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Lock, Mail, ChevronRight, UserCheck, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import Loader from '@/components/ui/Loader';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -188,7 +189,7 @@ export default function Login() {
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  <Loader size="small" variant="white" />
                   Verifying...
                 </span>
               ) : (

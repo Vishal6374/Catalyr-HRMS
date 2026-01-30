@@ -9,7 +9,7 @@ interface PageLoaderProps {
 
 export function PageLoader({ className, fullPage = true }: PageLoaderProps) {
     const content = (
-        <div className={cn("w-full min-h-[60vh]", className)}>
+        <div className={cn("w-full min-h-[60vh] flex items-center justify-center", className)}>
             <Loader />
         </div>
     );

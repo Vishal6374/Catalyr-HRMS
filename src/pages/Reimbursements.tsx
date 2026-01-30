@@ -9,13 +9,14 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, DollarSign, FileText, Check, X, Loader2, Paperclip } from 'lucide-react';
+import { Plus, Search, DollarSign, FileText, Check, X, Paperclip } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { reimbursementService } from '@/services/apiService';
 import { toast } from 'sonner';
 import { PageLoader } from '@/components/ui/page-loader';
+import Loader from '@/components/ui/Loader';
 
 export default function Reimbursements() {
   const { isHR, user } = useAuth();
@@ -282,7 +283,7 @@ export default function Reimbursements() {
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {createMutation.isPending && <Loader size="small" variant="white" className="mr-2" />}
                   Submit Claim
                 </Button>
               </DialogFooter>
@@ -316,7 +317,7 @@ export default function Reimbursements() {
                   onClick={() => selectedReimburse && rejectMutation.mutate({ id: selectedReimburse.id, remarks })}
                   disabled={!remarks || rejectMutation.isPending}
                 >
-                  {rejectMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {rejectMutation.isPending && <Loader size="small" variant="white" className="mr-2" />}
                   Reject
                 </Button>
               </DialogFooter>

@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, Users, Pencil, Plus, Search, Trash2, Loader2 } from 'lucide-react';
+import { Building2, Users, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
@@ -26,6 +26,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { departmentService } from '@/services/apiService';
 import { toast } from 'sonner';
 import { PageLoader } from '@/components/ui/page-loader';
+import Loader from '@/components/ui/Loader';
 
 export default function Departments() {
   const { isHR } = useAuth();
@@ -287,7 +288,7 @@ export default function Departments() {
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
                   {createMutation.isPending || updateMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader size="small" variant="white" className="mr-2" />
                   ) : null}
                   {selectedDept ? 'Update' : 'Create'}
                 </Button>

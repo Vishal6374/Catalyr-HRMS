@@ -29,7 +29,6 @@ import {
   FileText,
   Save,
   Camera,
-  Loader2,
   Download,
   Trash2,
   Eye,
@@ -37,6 +36,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { PageLoader } from '@/components/ui/page-loader';
+import Loader from '@/components/ui/Loader';
 
 export default function Profile() {
   const { user } = useAuth();
@@ -247,7 +247,7 @@ export default function Profile() {
                       Cancel
                     </Button>
                     <Button size="sm" onClick={handleSave} disabled={updateMutation.isPending}>
-                      {updateMutation.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+                      {updateMutation.isPending && <Loader size="small" variant="white" className="mr-1" />}
                       {!updateMutation.isPending && <Save className="w-4 h-4 mr-1" />}
                       Save
                     </Button>
@@ -390,7 +390,7 @@ export default function Profile() {
               <CardContent>
                 {docsLoading ? (
                   <div className="flex justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    <Loader className="text-primary" />
                   </div>
                 ) : documents.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -508,7 +508,7 @@ export default function Profile() {
                 onClick={handleUploadDocument}
                 disabled={uploadMutation.isPending}
               >
-                {uploadMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {uploadMutation.isPending && <Loader size="small" variant="white" className="mr-2" />}
                 Upload
               </Button>
             </DialogFooter>
@@ -535,7 +535,7 @@ export default function Profile() {
                 className="bg-destructive hover:bg-destructive/90"
                 disabled={deleteMutation.isPending}
               >
-                {deleteMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {deleteMutation.isPending && <Loader size="small" variant="white" className="mr-2" />}
                 Delete
               </AlertDialogAction>
             </div>

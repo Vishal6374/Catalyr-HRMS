@@ -9,8 +9,9 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { useQuery } from '@tanstack/react-query';
 import { payrollService } from '@/services/apiService';
 import { useAuth } from '@/contexts/AuthContext';
-import { FileText, Download, Printer, DollarSign, Loader2 } from 'lucide-react';
+import { FileText, Download, Printer, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
+import Loader from '@/components/ui/Loader';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { toast } from 'sonner';
@@ -191,8 +192,8 @@ export default function MyPayslips() {
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
-                        <div className="text-center py-8">
-                            <Loader2 className="w-8 h-8 animate-spin mx-auto" />
+                        <div className="flex flex-col items-center justify-center py-8">
+                            <Loader />
                             <p className="text-muted-foreground mt-2">Loading payslips...</p>
                         </div>
                     ) : (
