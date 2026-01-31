@@ -79,6 +79,17 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
         throw new AppError(404, 'User not found');
     }
 
+    // Restriction: Employees can only edit profile within 48 hours of onboarding
+    if (user.role === 'employee') {
+        const createdAt = new Date(user.created_at);
+        const now = new Date();
+        const diffInHours = Math.abs(now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+
+        if (diffInHours > 48) {
+            throw new AppError(403, 'Profile editing is locked after 48 hours of onboarding. Please contact HR for updates.');
+        }
+    }
+
     // Only allow updating specific fields
     if (phone !== undefined) user.phone = phone;
     if (address !== undefined) user.address = address;

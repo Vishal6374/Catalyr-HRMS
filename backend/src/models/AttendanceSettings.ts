@@ -6,17 +6,19 @@ export interface AttendanceSettingsAttributes {
     standard_work_hours: number;
     half_day_threshold: number;
     allow_self_clock_in: boolean;
+    auto_half_day_time: string;
     created_at?: Date;
     updated_at?: Date;
 }
 
-export interface AttendanceSettingsCreationAttributes extends Optional<AttendanceSettingsAttributes, 'id' | 'allow_self_clock_in' | 'created_at' | 'updated_at'> { }
+export interface AttendanceSettingsCreationAttributes extends Optional<AttendanceSettingsAttributes, 'id' | 'allow_self_clock_in' | 'auto_half_day_time' | 'created_at' | 'updated_at'> { }
 
 class AttendanceSettings extends Model<AttendanceSettingsAttributes, AttendanceSettingsCreationAttributes> implements AttendanceSettingsAttributes {
     public id!: string;
     public standard_work_hours!: number;
     public half_day_threshold!: number;
     public allow_self_clock_in!: boolean;
+    public auto_half_day_time!: string;
 
     public readonly created_at!: Date;
     public readonly updated_at!: Date;
@@ -51,6 +53,11 @@ AttendanceSettings.init(
             type: DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: true,
+        },
+        auto_half_day_time: {
+            type: DataTypes.STRING(10),
+            allowNull: false,
+            defaultValue: '19:00',
         },
     },
     {

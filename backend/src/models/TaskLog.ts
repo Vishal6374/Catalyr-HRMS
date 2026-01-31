@@ -10,7 +10,7 @@ export interface TaskLogAttributes {
     start_time?: Date;
     end_time?: Date;
     hours_spent: number;
-    status: 'pending' | 'completed' | 'ongoing';
+    status: 'pending' | 'completed' | 'ongoing' | 'approved' | 'rejected';
     created_at?: Date;
     updated_at?: Date;
 }
@@ -69,7 +69,7 @@ TaskLog.init(
             defaultValue: 0,
         },
         status: {
-            type: DataTypes.ENUM('pending', 'completed', 'ongoing'),
+            type: DataTypes.ENUM('pending', 'completed', 'ongoing', 'approved', 'rejected'),
             allowNull: false,
             defaultValue: 'completed',
         },

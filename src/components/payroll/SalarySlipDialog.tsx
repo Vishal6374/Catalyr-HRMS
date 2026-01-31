@@ -11,6 +11,8 @@ import { SalarySlip } from "@/types/hrms";
 import { useAuth } from "@/contexts/AuthContext";
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
+import { BRANDING } from '@/config/branding';
 
 interface SalarySlipDialogProps {
     isOpen: boolean;
@@ -22,7 +24,6 @@ interface SalarySlipDialogProps {
     designation?: string;
     canEdit?: boolean;
 }
-
 export function SalarySlipDialog({
     isOpen,
     onClose,
@@ -34,6 +35,7 @@ export function SalarySlipDialog({
     canEdit
 }: SalarySlipDialogProps) {
     const { user } = useAuth();
+    const { settings } = useSystemSettings(); // Add context usage
 
     if (!slip) return null;
 
@@ -64,35 +66,33 @@ export function SalarySlipDialog({
         window.print();
     };
 
-    // Cast to any to handle mixed old/new data structures without strict type errors
     const slipData = slip as any;
-
-    // Helper to safely get Number values
     const getVal = (val: any) => Number(val || 0);
-
-    // Consolidated values (handling legacy vs new structure)
+    // ... calculations ...
     const basic = getVal(slipData.basic_salary);
     const hra = getVal(slipData.hra);
     const da = getVal(slipData.da);
     const reimbursements = getVal(slipData.reimbursements);
-    const bonus = getVal(slipData.bonus); // Legacy support
+    const bonus = getVal(slipData.bonus);
 
     const pf = getVal(slipData.deductions?.pf);
     const tax = getVal(slipData.deductions?.tax);
     const esi = getVal(slipData.deductions?.esi);
-    const lop = getVal(slipData.deductions?.loss_of_pay) || getVal(slipData.lop); // Legacy support
-    const otherDeductions = getVal(slipData.deductions?.other) || getVal(slipData.other_deductions); // Legacy support
+    const lop = getVal(slipData.deductions?.loss_of_pay) || getVal(slipData.lop);
+    const otherDeductions = getVal(slipData.deductions?.other) || getVal(slipData.other_deductions);
 
     const totalEarnings = basic + hra + da + reimbursements + bonus;
     const totalDeductions = pf + tax + esi + lop + otherDeductions;
-    // Use slip.net_salary if reliable, otherwise recalc? Stick to slip.net_salary for consistency with DB
     const netSalary = getVal(slipData.net_salary);
+
+    const companyName = settings?.payslip_header_name || settings?.company_name || BRANDING.name;
+    const companyAddress = settings?.payslip_address || "123 Business Park, Tech City, TC 90210";
+    const companyLogo = settings?.payslip_logo_url || settings?.company_logo_url;
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-3xl w-full h-[85vh] flex flex-col p-0 overflow-hidden sm:rounded-lg">
-
-                {/* Print Styles */}
+                {/* styles */}
                 <style>{`
                     @media print {
                         body * { visibility: hidden; }
@@ -112,21 +112,15 @@ export function SalarySlipDialog({
                         .dialog-content-wrapper { overflow: visible !important; height: auto !important; }
                     }
                 `}</style>
-
-                {/* Fixed Header */}
                 <DialogHeader className="px-6 py-4 border-b print:hidden">
                     <DialogTitle>Salary Slip Preview</DialogTitle>
                 </DialogHeader>
-
-                {/* Scrollable Body */}
                 <div className="flex-1 overflow-y-auto bg-gray-50/50 p-6 no-scrollbar">
-
-                    {/* Slip Content */}
                     <div className="bg-white text-black border rounded-lg shadow-sm p-8 max-w-2xl mx-auto" id="salary-slip">
-                        {/* Company Header */}
                         <div className="text-center mb-8 border-b pb-6">
-                            <h1 className="text-2xl font-bold uppercase tracking-wider text-gray-900">Catalyr HRMS</h1>
-                            <p className="text-sm text-gray-500 mt-1">123 Business Park, Tech City, TC 90210</p>
+                            {companyLogo && <img src={companyLogo} alt="Logo" className="h-12 mx-auto mb-2 object-contain" />}
+                            <h1 className="text-2xl font-bold uppercase tracking-wider text-gray-900">{companyName}</h1>
+                            <p className="text-sm text-gray-500 mt-1">{companyAddress}</p>
                             <div className="mt-4 inline-block px-4 py-1 bg-gray-100 rounded-full">
                                 <p className="text-sm font-medium text-gray-700">Payslip for {format(new Date(slipData.year, slipData.month - 1), 'MMMM yyyy')}</p>
                             </div>

@@ -18,6 +18,7 @@ import { complaintService } from '@/services/apiService';
 import { toast } from 'sonner';
 import { PageLoader } from '@/components/ui/page-loader';
 import Loader from '@/components/ui/Loader';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Complaints() {
   const { isHR, user } = useAuth();
@@ -189,65 +190,169 @@ export default function Complaints() {
     return <PageLoader />;
   }
 
-  const myComplaints = complaints.filter((c: any) => c.is_anonymous || c.employee_id === user?.id);
+  // Filter for 'My Complaints': strictly user's own complaints
+  const myComplaints = complaints.filter((c: any) => c.employee_id === user?.id);
 
   return (
     <MainLayout>
       <div className="space-y-4 sm:space-y-6 animate-fade-in">
-        <PageHeader title="Complaints" description={isHR ? 'Manage employee complaints and grievances' : 'Submit anonymous or identified complaints'}>
-          {!isHR && (
-            <Button onClick={openCreateDialog}>
-              <Plus className="w-4 h-4 mr-2" />
-              New Complaint
-            </Button>
-          )}
-        </PageHeader>
+        <PageHeader title="Complaints" description={isHR ? 'Manage team complaints or file your own' : 'Submit anonymous or identified complaints'} />
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          <div className="p-4 rounded-xl bg-card border">
-            <p className="text-sm text-muted-foreground">Total Complaints</p>
-            <p className="text-xl sm:text-2xl font-bold">{isHR ? complaints.length : myComplaints.length}</p>
-          </div>
-          <div className="p-4 rounded-xl bg-card border">
-            <p className="text-sm text-muted-foreground">Pending</p>
-            <p className="text-xl sm:text-2xl font-bold">
-              {isHR
-                ? complaints.filter((c: any) => c.status === 'pending').length
-                : myComplaints.filter((c: any) => c.status === 'pending').length}
-            </p>
-          </div>
-          <div className="p-4 rounded-xl bg-card border">
-            <p className="text-sm text-muted-foreground">High Priority</p>
-            <p className="text-xl sm:text-2xl font-bold">
-              {isHR
-                ? complaints.filter((c: any) => c.priority === 'high').length
-                : myComplaints.filter((c: any) => c.priority === 'high').length}
-            </p>
-          </div>
-        </div>
+        {isHR ? (
+          <Tabs defaultValue="team">
+            <div className="flex items-center justify-between mb-6">
+              <TabsList>
+                <TabsTrigger value="team">Team Complaints</TabsTrigger>
+                <TabsTrigger value="my-complaints">My Complaints</TabsTrigger>
+              </TabsList>
+              <div className="flex gap-2">
+                <TabsContent value="my-complaints" className="m-0">
+                  <Button onClick={openCreateDialog}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    New Complaint
+                  </Button>
+                </TabsContent>
+              </div>
+            </div>
 
-        <div className="flex items-center gap-4">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[150px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="resolved">Resolved</SelectItem>
-              <SelectItem value="closed">Closed</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+            <TabsContent value="team" className="space-y-6">
+              {/* Team Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div className="p-4 rounded-xl bg-card border">
+                  <p className="text-sm text-muted-foreground">Total Complaints</p>
+                  <p className="text-xl sm:text-2xl font-bold">{complaints.length}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-card border">
+                  <p className="text-sm text-muted-foreground">Pending</p>
+                  <p className="text-xl sm:text-2xl font-bold">
+                    {complaints.filter((c: any) => c.status === 'pending').length}
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-card border">
+                  <p className="text-sm text-muted-foreground">High Priority</p>
+                  <p className="text-xl sm:text-2xl font-bold">
+                    {complaints.filter((c: any) => c.priority === 'high').length}
+                  </p>
+                </div>
+              </div>
 
-        <DataTable
-          columns={isHR ? hrColumns : employeeColumns}
-          data={isHR ? complaints : myComplaints}
-          keyExtractor={(comp) => comp.id}
-          emptyMessage="No complaints found"
-        />
+              <div className="flex items-center gap-4">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="resolved">Resolved</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <DataTable
+                columns={hrColumns}
+                data={complaints}
+                keyExtractor={(comp) => comp.id}
+                emptyMessage="No complaints found"
+              />
+            </TabsContent>
+
+            <TabsContent value="my-complaints" className="space-y-6">
+              {/* My Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div className="p-4 rounded-xl bg-card border">
+                  <p className="text-sm text-muted-foreground">My Complaints</p>
+                  <p className="text-xl sm:text-2xl font-bold">{myComplaints.length}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-card border">
+                  <p className="text-sm text-muted-foreground">Pending</p>
+                  <p className="text-xl sm:text-2xl font-bold">
+                    {myComplaints.filter((c: any) => c.status === 'pending').length}
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-card border">
+                  <p className="text-sm text-muted-foreground">High Priority</p>
+                  <p className="text-xl sm:text-2xl font-bold">
+                    {myComplaints.filter((c: any) => c.priority === 'high').length}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="resolved">Resolved</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <DataTable
+                columns={employeeColumns}
+                data={myComplaints}
+                keyExtractor={(comp) => comp.id}
+                emptyMessage="No personal complaints found"
+              />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <>
+            <div className="flex justify-end mb-6">
+              <Button onClick={openCreateDialog}>
+                <Plus className="w-4 h-4 mr-2" />
+                New Complaint
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+              <div className="p-4 rounded-xl bg-card border">
+                <p className="text-sm text-muted-foreground">My Complaints</p>
+                <p className="text-xl sm:text-2xl font-bold">{myComplaints.length}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-card border">
+                <p className="text-sm text-muted-foreground">Pending</p>
+                <p className="text-xl sm:text-2xl font-bold">
+                  {myComplaints.filter((c: any) => c.status === 'pending').length}
+                </p>
+              </div>
+              <div className="p-4 rounded-xl bg-card border">
+                <p className="text-sm text-muted-foreground">High Priority</p>
+                <p className="text-xl sm:text-2xl font-bold">
+                  {myComplaints.filter((c: any) => c.priority === 'high').length}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 mb-4">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-[150px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="resolved">Resolved</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <DataTable
+              columns={employeeColumns}
+              data={myComplaints}
+              keyExtractor={(comp) => comp.id}
+              emptyMessage="No complaints found"
+            />
+          </>
+        )}
 
         {/* Create Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

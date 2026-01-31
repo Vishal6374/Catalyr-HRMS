@@ -11,8 +11,13 @@ router.get('/slips', authenticate, asyncHandler(payrollController.getSalarySlips
 router.post('/generate', authenticate, requireHR, auditLog('payroll', 'generate'), asyncHandler(payrollController.generatePayroll));
 router.post('/mark-paid/:id', authenticate, requireHR, auditLog('payroll', 'mark_paid'), asyncHandler(payrollController.markPayrollPaid));
 
+
 router.get('/stats', authenticate, requireHR, asyncHandler(payrollController.getPayrollStats));
 router.post('/create', authenticate, requireHR, auditLog('payroll', 'create'), asyncHandler(payrollController.createSalarySlip));
 router.put('/update/:id', authenticate, requireHR, auditLog('payroll', 'update'), asyncHandler(payrollController.updateSalarySlip));
+
+// Unified Payroll Flow
+router.post('/preview', authenticate, requireHR, asyncHandler(payrollController.previewPayroll));
+router.post('/process', authenticate, requireHR, auditLog('payroll', 'process'), asyncHandler(payrollController.processPayroll));
 
 export default router;

@@ -17,7 +17,10 @@ export interface UserAttributes {
     salary: number;
     role: 'admin' | 'hr' | 'employee';
     status: 'active' | 'inactive' | 'on_leave' | 'terminated';
-    onboarding_status: 'pending' | 'approved' | 'locked';
+    pf_percentage?: number;
+    esi_percentage?: number;
+    absent_deduction_type?: 'percentage' | 'amount';
+    absent_deduction_value?: number;
     address?: string;
     avatar_url?: string;
     termination_date?: Date;
@@ -30,7 +33,7 @@ export interface UserAttributes {
     updated_at?: Date;
 }
 
-export interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'onboarding_status' | 'created_at' | 'updated_at'> { }
+export interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'created_at' | 'updated_at'> { }
 
 class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
     public id!: string;
@@ -47,7 +50,10 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
     public salary!: number;
     public role!: 'admin' | 'hr' | 'employee';
     public status!: 'active' | 'inactive' | 'on_leave' | 'terminated';
-    public onboarding_status!: 'pending' | 'approved' | 'locked';
+    public pf_percentage?: number;
+    public esi_percentage?: number;
+    public absent_deduction_type?: 'percentage' | 'amount';
+    public absent_deduction_value?: number;
     public address?: string;
     public avatar_url?: string;
     public termination_date?: Date;
@@ -56,6 +62,12 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
     public account_number?: string;
     public ifsc_code?: string;
     public branch_name?: string;
+
+    // Associations
+    public readonly department?: any; // To avoid circular dependency with Department model type
+    public readonly designation?: any;
+    public readonly reportingManager?: User;
+    public readonly leaveBalances?: any[];
 
     public readonly created_at!: Date;
     public readonly updated_at!: Date;
@@ -138,10 +150,21 @@ User.init(
             allowNull: false,
             defaultValue: 'active',
         },
-        onboarding_status: {
-            type: DataTypes.ENUM('pending', 'approved', 'locked'),
-            allowNull: false,
-            defaultValue: 'pending',
+        pf_percentage: {
+            type: DataTypes.DECIMAL(5, 2),
+            allowNull: true,
+        },
+        esi_percentage: {
+            type: DataTypes.DECIMAL(5, 2),
+            allowNull: true,
+        },
+        absent_deduction_type: {
+            type: DataTypes.ENUM('percentage', 'amount'),
+            allowNull: true,
+        },
+        absent_deduction_value: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: true,
         },
         address: {
             type: DataTypes.TEXT,

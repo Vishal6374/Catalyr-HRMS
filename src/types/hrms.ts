@@ -53,6 +53,10 @@ export interface Employee {
   ifsc_code?: string;
   branch_name?: string;
   onboarding_status: 'pending' | 'approved' | 'locked';
+  pf_percentage?: number;
+  esi_percentage?: number;
+  absent_deduction_type?: 'percentage' | 'amount';
+  absent_deduction_value?: number;
   department?: Department;
   designation?: Designation;
   // Legacy camelCase if needed, but preferable to use snake_case for backend fields

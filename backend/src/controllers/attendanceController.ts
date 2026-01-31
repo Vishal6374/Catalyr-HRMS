@@ -4,6 +4,8 @@ import { Op } from 'sequelize';
 import AttendanceLog from '../models/AttendanceLog';
 import { AppError } from '../middleware/errorHandler';
 import { calculateWorkHours, isWeekend } from '../utils/helpers';
+import { logAudit } from '../utils/auditLogger';
+
 
 export const getAttendanceLogs = async (req: AuthRequest, res: Response): Promise<void> => {
     const { employee_id, start_date, end_date, status } = req.query;
@@ -30,13 +32,64 @@ export const getAttendanceLogs = async (req: AuthRequest, res: Response): Promis
         where.status = status;
     }
 
+    // Auto-mark half days for missing clock-outs
+    const AttendanceSettings = (await import('../models/AttendanceSettings')).default;
+    const settings = await AttendanceSettings.findOne();
+    if (settings && settings.auto_half_day_time) {
+        const [hour, minute] = settings.auto_half_day_time.split(':').map(Number);
+        const now = new Date();
+
+        // Find logs that need auto-correction
+        const pendingLogs = await AttendanceLog.findAll({
+            where: {
+                ...where,
+                check_in: { [Op.ne]: null },
+                check_out: null,
+                status: 'present', // Only auto-correct if they were initially marked present/ongoing
+                date: { [Op.lt]: now.toISOString().split('T')[0] } // Only for past days to avoid marking today prematurely
+            }
+        });
+
+        for (const log of pendingLogs) {
+            log.status = 'half_day';
+            log.notes = (log.notes ? log.notes + ' ' : '') + '(Auto-marked half day due to missing clock-out)';
+            await log.save();
+        }
+
+        // Also check if TODAY is already past the auto_half_day_time
+        const todayStr = now.toISOString().split('T')[0];
+        const thresholdToday = new Date(now);
+        thresholdToday.setHours(hour, minute, 0, 0);
+
+        if (now > thresholdToday) {
+            const todayPendingLogs = await AttendanceLog.findAll({
+                where: {
+                    ...where,
+                    date: todayStr,
+                    check_in: { [Op.ne]: null },
+                    check_out: null,
+                    status: 'present'
+                }
+            });
+
+            for (const log of todayPendingLogs) {
+                log.status = 'half_day';
+                log.notes = (log.notes ? log.notes + ' ' : '') + '(Auto-marked half day due to missing clock-out)';
+                await log.save();
+            }
+        }
+    }
+
     const logs = await AttendanceLog.findAll({
         where,
         include: [
             {
                 association: 'employee',
-                attributes: ['id', 'name', 'email', 'employee_id', 'status'],
-                where: { status: { [Op.ne]: 'terminated' } }, // Exclude terminated employees
+                attributes: ['id', 'name', 'email', 'employee_id', 'status', 'pf_percentage', 'esi_percentage', 'absent_deduction_type', 'absent_deduction_value'],
+                where: {
+                    status: { [Op.ne]: 'terminated' }, // Exclude terminated employees
+                    ...(req.user?.role === 'hr' ? { role: { [Op.ne]: 'admin' } } : {})
+                },
                 required: true // Inner join to exclude logs of terminated employees
             },
         ],
@@ -56,6 +109,11 @@ export const markAttendance = async (req: AuthRequest, res: Response): Promise<v
 
         if (!targetEmployeeId) {
             throw new AppError(400, 'Employee ID is required');
+        }
+
+        // Restriction: HR cannot mark their own attendance
+        if (req.user?.role === 'hr' && targetEmployeeId === req.user?.id) {
+            throw new AppError(403, 'HR cannot mark their own attendance. This must be done by an Admin.');
         }
 
         // Get attendance settings
@@ -136,10 +194,24 @@ export const markAttendance = async (req: AuthRequest, res: Response): Promise<v
             is_locked: false,
         });
 
+        if (isHRorAdmin) {
+            await logAudit({
+                action: 'MARK_MANUAL',
+                module: 'ATTENDANCE',
+                entity_type: 'ATTENDANCE_LOG',
+                entity_id: attendance.id,
+                performed_by: req.user!.id,
+                new_value: attendance.toJSON(),
+                ip_address: req.ip,
+                user_agent: req.get('user-agent'),
+            });
+        }
+
         res.json({
             message: 'Attendance marked successfully',
             attendance,
         });
+
     } catch (error: any) {
         console.error('Error in markAttendance:', error);
         if (error instanceof AppError) {
@@ -169,6 +241,11 @@ export const updateAttendance = async (req: AuthRequest, res: Response): Promise
 
         if (!attendance) {
             throw new AppError(404, 'Attendance record not found');
+        }
+
+        // Restriction: HR cannot update their own attendance
+        if (req.user?.role === 'hr' && attendance.employee_id === req.user?.id) {
+            throw new AppError(403, 'HR cannot update their own attendance. This must be done by an Admin.');
         }
 
         // Check if attendance is locked
@@ -214,6 +291,7 @@ export const updateAttendance = async (req: AuthRequest, res: Response): Promise
             attendanceStatus = attendance.status;
         }
 
+        const oldValues = attendance.toJSON();
         // Update attendance record
         await attendance.update({
             employee_id: employee_id || attendance.employee_id,
@@ -225,6 +303,18 @@ export const updateAttendance = async (req: AuthRequest, res: Response): Promise
             notes: notes !== undefined ? notes : attendance.notes,
             edited_by: req.user?.id,
             edit_reason: edit_reason || 'Manual edit by HR',
+        });
+
+        await logAudit({
+            action: 'UPDATE_MANUAL',
+            module: 'ATTENDANCE',
+            entity_type: 'ATTENDANCE_LOG',
+            entity_id: attendance.id,
+            performed_by: req.user!.id,
+            old_value: oldValues,
+            new_value: attendance.toJSON(),
+            ip_address: req.ip,
+            user_agent: req.get('user-agent'),
         });
 
         res.json({

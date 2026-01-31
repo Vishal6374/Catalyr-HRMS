@@ -20,9 +20,11 @@ import { MarkAttendanceModal } from '@/components/attendance/MarkAttendanceModal
 import { PageLoader } from '@/components/ui/page-loader';
 import Loader from '@/components/ui/Loader';
 import { RegularizationModal } from '@/components/attendance/RegularizationModal';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Attendance() {
   const { isHR, user } = useAuth();
+  const [activeTab, setActiveTab] = useState(isHR ? 'team' : 'personal');
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -75,7 +77,7 @@ export default function Attendance() {
       });
       return data;
     },
-    enabled: !isHR,
+    enabled: !!user?.id,
   });
 
   // Fetch holidays
@@ -188,7 +190,7 @@ export default function Attendance() {
   };
 
   const handleDateClick = (date: Date) => {
-    if (isHR) {
+    if (activeTab === 'team') {
       setSelectedDate(date);
       setIsModalOpen(true);
     }
@@ -228,13 +230,22 @@ export default function Attendance() {
   return (
     <MainLayout>
       <div className="space-y-4 sm:space-y-6 animate-fade-in">
+        {isHR && (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+            <TabsList>
+              <TabsTrigger value="team">Team Attendance</TabsTrigger>
+              <TabsTrigger value="personal">My Attendance</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
+
         <div className="flex items-center justify-between">
           <PageHeader
             title="Attendance"
-            description={isHR ? 'Track and manage employee attendance' : 'Clock in/out and view your attendance'}
+            description={activeTab === 'team' ? 'Track and manage employee attendance' : 'Clock in/out and view your attendance'}
           />
           <div className="flex items-center gap-2">
-            {!isHR && (
+            {activeTab === 'personal' && (
               <Button
                 variant="outline"
                 size="sm"
@@ -245,7 +256,7 @@ export default function Attendance() {
                 Request Correction
               </Button>
             )}
-            {isHR && (
+            {activeTab === 'team' && (
               <Button
                 variant="outline"
                 size="sm"
@@ -256,7 +267,7 @@ export default function Attendance() {
                 {showRegularizationRequests ? 'Show Attendance' : 'View Requests'}
               </Button>
             )}
-            {isHR && (
+            {activeTab === 'team' && (
               <Button
                 variant="outline"
                 size="sm"
@@ -271,12 +282,12 @@ export default function Attendance() {
         </div>
 
         {/* Settings Panel - HR Only */}
-        {isHR && showSettings && (
+        {activeTab === 'team' && showSettings && (
           <AttendanceSettings />
         )}
 
         {/* Regularization Requests - HR Only */}
-        {isHR && showRegularizationRequests && (
+        {activeTab === 'team' && showRegularizationRequests && (
           <Card className="animate-in slide-in-from-top duration-300">
             <CardHeader>
               <CardTitle className="text-base flex items-center justify-between">
@@ -330,12 +341,12 @@ export default function Attendance() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {isHR ? (
+          {activeTab === 'team' ? (
             <>
               <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center"><UserCheck className="w-5 h-5 text-green-600" /></div><div><p className="text-xl sm:text-2xl font-bold">{presentToday}</p><p className="text-xs text-muted-foreground">Present Today</p></div></div></CardContent></Card>
               <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center"><UserX className="w-5 h-5 text-destructive" /></div><div><p className="text-xl sm:text-2xl font-bold">{absentToday}</p><p className="text-xs text-muted-foreground">Absent Today</p></div></div></CardContent></Card>
               <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center"><CalendarCheck className="w-5 h-5 text-blue-600" /></div><div><p className="text-xl sm:text-2xl font-bold">{todayLogs.filter((log: any) => log.status === 'on_leave').length}</p><p className="text-xs text-muted-foreground">On Leave</p></div></div></CardContent></Card>
-              <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center"><Clock className="w-5 h-5 text-slate-600" /></div><div><p className="text-xl sm:text-2xl font-bold">{format(currentTime, 'HH:mm')}</p><p className="text-xs text-muted-foreground">Current Time</p></div></div></CardContent></Card>
+              <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center"><Clock className="w-5 h-5 text-slate-600" /></div><div><p className="text-xl sm:text-2xl font-bold">{format(currentTime, 'hh:mm a')}</p><p className="text-xs text-muted-foreground">Current Time</p></div></div></CardContent></Card>
             </>
           ) : (
             <>
@@ -343,7 +354,7 @@ export default function Attendance() {
                 <CardContent className="pt-6 pb-6">
                   <div className="flex flex-col items-center gap-4">
                     <div className="text-center">
-                      <p className="text-4xl sm:text-5xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">{format(currentTime, 'HH:mm:ss')}</p>
+                      <p className="text-4xl sm:text-5xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">{format(currentTime, 'hh:mm:ss a')}</p>
                       <p className="text-sm sm:text-base text-muted-foreground mt-2">{format(currentTime, 'EEEE, MMMM d, yyyy')}</p>
                     </div>
                     {attendanceToday ? (
@@ -355,13 +366,13 @@ export default function Attendance() {
                         {attendanceToday.check_in && (
                           <div className="text-center p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-green-200 w-full shadow-sm">
                             <p className="text-xs text-muted-foreground">Clock In Time</p>
-                            <p className="text-2xl sm:text-xl font-bold text-green-600">{format(new Date(attendanceToday.check_in), 'HH:mm:ss')}</p>
+                            <p className="text-2xl sm:text-xl font-bold text-green-600">{format(new Date(attendanceToday.check_in), 'hh:mm:ss a')}</p>
                           </div>
                         )}
                         {attendanceToday.check_out && (
                           <div className="text-center p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-red-200 w-full shadow-sm">
                             <p className="text-xs text-muted-foreground">Clock Out Time</p>
-                            <p className="text-2xl sm:text-xl font-bold text-red-600">{format(new Date(attendanceToday.check_out), 'HH:mm:ss')}</p>
+                            <p className="text-2xl sm:text-xl font-bold text-red-600">{format(new Date(attendanceToday.check_out), 'hh:mm:ss a')}</p>
                           </div>
                         )}
                         {!attendanceToday.check_out && (
@@ -416,7 +427,7 @@ export default function Attendance() {
         </div>
 
         {/* Today's Attendance - HR Only - Fixed Height with Scroll */}
-        {isHR && (
+        {activeTab === 'team' && (
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center justify-between">
@@ -447,8 +458,8 @@ export default function Attendance() {
                       <div className="flex items-center gap-3">
                         {empAttendance && (
                           <div className="text-right text-xs">
-                            {empAttendance.check_in && <p className="text-muted-foreground">In: <span className="font-semibold text-green-600">{format(new Date(empAttendance.check_in), 'HH:mm')}</span></p>}
-                            {empAttendance.check_out && <p className="text-muted-foreground">Out: <span className="font-semibold text-red-600">{format(new Date(empAttendance.check_out), 'HH:mm')}</span></p>}
+                            {empAttendance.check_in && <p className="text-muted-foreground">In: <span className="font-semibold text-green-600">{format(new Date(empAttendance.check_in), 'hh:mm a')}</span></p>}
+                            {empAttendance.check_out && <p className="text-muted-foreground">Out: <span className="font-semibold text-red-600">{format(new Date(empAttendance.check_out), 'hh:mm a')}</span></p>}
                           </div>
                         )}
                         {empAttendance ? (
@@ -491,7 +502,7 @@ export default function Attendance() {
           </CardHeader>
           <CardContent>
             {/* Legend */}
-            {!isHR && (
+            {activeTab === 'personal' && (
               <div className="mb-4 p-3 bg-muted/50 rounded-lg">
                 <div className="flex flex-wrap gap-3 text-xs">
                   <div className="flex items-center gap-1.5">
@@ -590,11 +601,11 @@ export default function Attendance() {
                     onClick={() => handleDateClick(date)}
                     className={cn(
                       'aspect-square p-1.5 border rounded-lg flex flex-col relative group transition-all min-h-[80px]',
-                      isHR && 'cursor-pointer hover:border-primary hover:shadow-md',
+                      activeTab === 'team' && 'cursor-pointer hover:border-primary hover:shadow-md',
                       isWeekendDay && 'bg-blue-50/50 border-blue-200',
                       holiday && 'bg-pink-50 border-pink-200',
                       isTodayDate && 'ring-2 ring-primary ring-offset-1',
-                      !isHR && statusInfo && statusInfo.color.includes('bg-') && statusInfo.color.split(' ')[1]
+                      activeTab === 'personal' && statusInfo && statusInfo.color.includes('bg-') && statusInfo.color.split(' ')[1]
                     )}
                     title={holiday?.name || ''}
                   >
@@ -614,7 +625,7 @@ export default function Attendance() {
                     </div>
 
                     {/* Employee View - Status Labels */}
-                    {!isHR && (
+                    {activeTab === 'personal' && (
                       <div className="flex-1 flex flex-col justify-center items-center gap-0.5">
                         {holiday && (
                           <div className="text-center">
@@ -633,7 +644,7 @@ export default function Attendance() {
                             </div>
                             {userLog?.check_in && (
                               <div className="text-[9px] text-muted-foreground mt-0.5">
-                                {format(new Date(userLog.check_in), 'HH:mm')} - {userLog.check_out ? format(new Date(userLog.check_out), 'HH:mm') : ''}
+                                {format(new Date(userLog.check_in), 'hh:mm a')} - {userLog.check_out ? format(new Date(userLog.check_out), 'hh:mm a') : ''}
                               </div>
                             )}
                           </div>
@@ -642,7 +653,7 @@ export default function Attendance() {
                     )}
 
                     {/* HR View - Present Count */}
-                    {isHR && (
+                    {activeTab === 'team' && (
                       <div className="flex-1 flex items-center justify-center">
                         {holiday && (
                           <span className="text-[10px] font-semibold text-pink-600">{holiday.name}</span>
@@ -658,7 +669,7 @@ export default function Attendance() {
             </div>
 
             {/* Legend for HR */}
-            {isHR && (
+            {activeTab === 'team' && (
               <div className="flex flex-wrap gap-4 mt-6 pt-4 border-t">
                 <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500" /><span className="text-xs">Present</span></div>
                 <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-destructive" /><span className="text-xs">Absent</span></div>
@@ -693,8 +704,8 @@ export default function Attendance() {
                     <div className="flex items-center gap-3">
                       {empLog && (
                         <div className="text-right text-xs">
-                          {empLog.check_in && <p className="text-muted-foreground">In: <span className="font-semibold text-green-600">{format(new Date(empLog.check_in), 'HH:mm:ss')}</span></p>}
-                          {empLog.check_out && <p className="text-muted-foreground">Out: <span className="font-semibold text-red-600">{format(new Date(empLog.check_out), 'HH:mm:ss')}</span></p>}
+                          {empLog.check_in && <p className="text-muted-foreground">In: <span className="font-semibold text-green-600">{format(new Date(empLog.check_in), 'hh:mm:ss a')}</span></p>}
+                          {empLog.check_out && <p className="text-muted-foreground">Out: <span className="font-semibold text-red-600">{format(new Date(empLog.check_out), 'hh:mm:ss a')}</span></p>}
                         </div>
                       )}
                       {empLog ? (

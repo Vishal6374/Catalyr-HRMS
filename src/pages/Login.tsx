@@ -8,8 +8,10 @@ import { Lock, Mail, ChevronRight, UserCheck, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import Loader from '@/components/ui/Loader';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 
 export default function Login() {
+  const { settings } = useSystemSettings();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -17,13 +19,20 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const bgImage = settings?.login_bg_url || "https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80";
+  const logo = settings?.login_logo_url || settings?.company_logo_url || "/favicon.png";
+  const loginTitle = settings?.login_title || "Welcome back";
+  const loginSubtitle = settings?.login_subtitle || "Enter your work email to access your workspace";
+  const companyName = settings?.company_name || "Catalyr HRMS";
+
   const handleSubmit = async (e: React.FormEvent) => {
+    // ... same submit logic
     e.preventDefault();
     setIsLoading(true);
     try {
       const success = await login(email, password);
       if (success) {
-        toast.success('Welcome back to Catalyr!');
+        toast.success('Welcome back!');
         navigate('/dashboard');
       } else {
         toast.error('Access denied. Please check your credentials.');
@@ -35,15 +44,7 @@ export default function Login() {
     }
   };
 
-  const fillCredentials = (type: 'hr' | 'employee') => {
-    if (type === 'hr') {
-      setEmail('hr@company.com');
-      setPassword('hr123');
-    } else {
-      setEmail('john.smith@company.com');
-      setPassword('emp123');
-    }
-  };
+  // ...
 
   return (
     <div className="min-h-screen w-full flex overflow-hidden bg-background">
@@ -56,8 +57,8 @@ export default function Login() {
             initial={{ scale: 1.1, opacity: 0 }}
             animate={{ scale: 1, opacity: 0.6 }}
             transition={{ duration: 1.5, ease: "easeOut" }}
-            src="https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80"
-            alt="Modern Office"
+            src={bgImage}
+            alt="Office"
             className="w-full h-full object-cover"
           />
         </div>
@@ -70,10 +71,10 @@ export default function Login() {
           className="relative z-20 flex items-center gap-3"
         >
           <div className="">
-            <img src="/favicon.png" alt="Catalyr Logo" className="w-8 h-8" />
+            <img src={logo} alt="Logo" className="w-8 h-8 object-contain" />
           </div>
           <span className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
-            Catalyr HRMS
+            {companyName}
           </span>
         </motion.div>
 
@@ -89,11 +90,12 @@ export default function Login() {
               <span className="text-blue-400">Manage Your Workforce.</span>
             </h2>
             <p className="text-lg text-blue-100/80 mb-8 max-w-md leading-relaxed">
-              Experience a seamless HR management journey. From attendance to payroll,
+              Experience a seamless management journey. From attendance to payroll,
               everything you need in one powerful platform.
             </p>
           </motion.div>
 
+          {/* ... user avatars ... */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -121,9 +123,9 @@ export default function Login() {
           className="relative z-20 pt-12 border-t border-white/10"
         >
           <p className="text-sm italic text-blue-100/60">
-            "Catalyr has completely transformed our HR processes. Highly recommended for any growing enterprise."
+            "{companyName} has completely transformed our HR processes. Highly recommended for any growing enterprise."
           </p>
-          <p className="mt-2 text-sm font-semibold">— Founder @ Pebbles</p>
+          <p className="mt-2 text-sm font-semibold">— Founder</p>
         </motion.div>
       </div>
 
@@ -138,12 +140,12 @@ export default function Login() {
           <div className="text-center lg:text-left">
             {/* Mobile Logo */}
             <div className="flex lg:hidden items-center justify-center gap-3 mb-8">
-              <img src="/favicon.png" alt="Catalyr Logo" className="w-10 h-10" />
-              <span className="text-2xl font-bold">Catalyr HRMS</span>
+              <img src={logo} alt="Logo" className="w-10 h-10 object-contain" />
+              <span className="text-2xl font-bold">{companyName}</span>
             </div>
 
-            <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Welcome back</h1>
-            <p className="text-zinc-500 dark:text-zinc-400 mt-2">Enter your work email to access your workspace</p>
+            <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">{loginTitle}</h1>
+            <p className="text-zinc-500 dark:text-zinc-400 mt-2">{loginSubtitle}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">

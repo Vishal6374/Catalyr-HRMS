@@ -52,4 +52,8 @@ router.post('/bank-advice', authenticate, requireHR, asyncHandler(configControll
 // ============ TAX CALCULATION ROUTES ============
 router.get('/calculate-tax', authenticate, asyncHandler(configController.calculateTax));
 
+// ============ PAYROLL SETTINGS ROUTES ============
+router.get('/settings', authenticate, requireHR, asyncHandler(configController.getPayrollSettings));
+router.put('/settings', authenticate, requireHR, auditLog('payroll_settings', 'update'), asyncHandler(configController.updatePayrollSettings));
+
 export default router;

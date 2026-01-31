@@ -36,11 +36,11 @@ export default function Dashboard() {
     },
   });
 
-  // HR-specific data queries
+  // Fetch employees for HR view
   const { data: employees = [] } = useQuery({
-    queryKey: ['employees-list'],
+    queryKey: ['employees'],
     queryFn: async () => {
-      const { data } = await employeeService.getAll();
+      const { data } = await employeeService.getAll({ status: 'active' });
       return data.employees || [];
     },
     enabled: isHR,

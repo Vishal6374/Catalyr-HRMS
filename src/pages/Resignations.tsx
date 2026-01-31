@@ -73,12 +73,18 @@ export default function Resignations() {
         {
             key: 'preferredLWD',
             header: 'Preferred LWD',
-            cell: (res) => (
-                <div className="flex items-center gap-2">
-                    <Clock className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-sm">{format(new Date(res.preferredLastWorkingDay), 'MMM dd, yyyy')}</span>
-                </div>
-            ),
+            cell: (res) => {
+                const date = res.preferredLastWorkingDay ? new Date(res.preferredLastWorkingDay) : null;
+                const isValidDate = date && !isNaN(date.getTime());
+                return (
+                    <div className="flex items-center gap-2">
+                        <Clock className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-sm">
+                            {isValidDate ? format(date, 'MMM dd, yyyy') : '-'}
+                        </span>
+                    </div>
+                );
+            },
         },
         {
             key: 'status',
@@ -88,12 +94,21 @@ export default function Resignations() {
         {
             key: 'appliedAt',
             header: 'Applied On',
-            cell: (res) => <span className="text-muted-foreground text-sm">{format(new Date(res.createdAt), 'MMM dd, yyyy')}</span>,
+            cell: (res) => {
+                const date = res.createdAt ? new Date(res.createdAt) : null;
+                const isValidDate = date && !isNaN(date.getTime());
+                return <span className="text-muted-foreground text-sm">{isValidDate ? format(date, 'MMM dd, yyyy') : '-'}</span>;
+            },
         },
         {
             key: 'approvedLWD',
             header: 'Approved LWD',
-            cell: (res) => res.approvedLastWorkingDay ? <span>{format(new Date(res.approvedLastWorkingDay), 'MMM dd, yyyy')}</span> : <span className="text-muted-foreground">-</span>,
+            cell: (res) => {
+                if (!res.approvedLastWorkingDay) return <span className="text-muted-foreground">-</span>;
+                const date = new Date(res.approvedLastWorkingDay);
+                if (isNaN(date.getTime())) return <span className="text-muted-foreground">-</span>;
+                return <span>{format(date, 'MMM dd, yyyy')}</span>;
+            },
         },
         {
             key: 'actions',
@@ -107,7 +122,9 @@ export default function Resignations() {
                             className="text-success hover:text-success hover:bg-success/10"
                             onClick={() => {
                                 setSelectedResignation(res);
-                                setApprovedLWD(format(new Date(res.preferredLastWorkingDay), 'yyyy-MM-dd'));
+                                const date = res.preferredLastWorkingDay ? new Date(res.preferredLastWorkingDay) : new Date();
+                                const dateStr = !isNaN(date.getTime()) ? format(date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
+                                setApprovedLWD(dateStr);
                                 setIsApproveDialogOpen(true);
                             }}
                         >
@@ -134,7 +151,7 @@ export default function Resignations() {
         <MainLayout>
             <div className="space-y-6 animate-fade-in">
                 <PageHeader
-                    title="Exit Management"
+                    title="Resignations"
                     description={isHR ? "Manage employee resignations and offboarding." : "Track your resignation request status."}
                 />
 

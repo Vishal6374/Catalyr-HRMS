@@ -9,22 +9,33 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LeaveRequest } from '@/types/hrms';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, CalendarDays, Check, X, Clock, Settings } from 'lucide-react';
+import { Plus, CalendarDays, Check, X, Clock, Settings, Edit2, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { leaveService, employeeService, leaveLimitService } from '@/services/apiService';
+import { leaveService, employeeService, leaveLimitService, leaveTypeService } from '@/services/apiService';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { PageLoader } from '@/components/ui/page-loader';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
+
+interface LeaveType {
+  id: string;
+  name: string;
+  description: string;
+  is_paid: boolean;
+  default_days_per_year: number;
+  status: 'active' | 'inactive';
+}
 
 export default function Leaves() {
   const { isHR, user } = useAuth();
+  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState('all');
-
-  // New hooks moved from bottom
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [leaveLimits, setLeaveLimits] = useState({ casual_leave: 12, sick_leave: 12, earned_leave: 15 });
@@ -34,6 +45,17 @@ export default function Leaves() {
     start_date: '',
     end_date: '',
     reason: '',
+  });
+
+  // Leave Type states
+  const [isTypeDialogOpen, setIsTypeDialogOpen] = useState(false);
+  const [selectedType, setSelectedType] = useState<LeaveType | null>(null);
+  const [typeFormData, setTypeFormData] = useState({
+    name: '',
+    description: '',
+    is_paid: true,
+    default_days_per_year: 12,
+    status: 'active'
   });
 
   // Fetch leave requests
@@ -47,6 +69,15 @@ export default function Leaves() {
     },
   });
 
+  // Fetch leave types
+  const { data: leaveTypes = [] } = useQuery({
+    queryKey: ['leave-types'],
+    queryFn: async () => {
+      const { data } = await leaveTypeService.getAll();
+      return data;
+    },
+  });
+
   // Fetch leave limits
   useQuery({
     queryKey: ['leave-limits'],
@@ -56,7 +87,7 @@ export default function Leaves() {
         setLeaveLimits({
           casual_leave: data.casual_leave,
           sick_leave: data.sick_leave,
-          earned_leave: data.earned_leave // Map based on DB/API field names usually
+          earned_leave: data.earned_leave
         });
       }
       return data;
@@ -75,6 +106,37 @@ export default function Leaves() {
     onError: (error: any) => toast.error('Failed to update leave limits'),
   });
 
+  // Leave Type Mutations
+  const createTypeMutation = useMutation({
+    mutationFn: (data: any) => leaveTypeService.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leave-types'] });
+      setIsTypeDialogOpen(false);
+      toast.success('Leave type created');
+      resetTypeForm();
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to create type'),
+  });
+
+  const updateTypeMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: any }) => leaveTypeService.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leave-types'] });
+      setIsTypeDialogOpen(false);
+      toast.success('Leave type updated');
+      resetTypeForm();
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to update type'),
+  });
+
+  const deleteTypeMutation = useMutation({
+    mutationFn: (id: string) => leaveTypeService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leave-types'] });
+      toast.success('Leave type deleted');
+    },
+  });
+
   // Fetch leave balances
   const { data: balances = [] } = useQuery({
     queryKey: ['leave-balances'],
@@ -88,13 +150,11 @@ export default function Leaves() {
   const { data: employees = [] } = useQuery({
     queryKey: ['employees'],
     queryFn: async () => {
-      const { data } = await employeeService.getAll();
+      const { data } = await employeeService.getAll({ status: 'active' });
       return data.employees || [];
     },
     enabled: isHR,
   });
-
-  const queryClient = useQueryClient();
 
   // Mutations for HR actions
   const approveMutation = useMutation({
@@ -103,6 +163,7 @@ export default function Leaves() {
       queryClient.invalidateQueries({ queryKey: ['leaves'] });
       toast.success('Leave approved');
     },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to approve leave'),
   });
 
   const rejectMutation = useMutation({
@@ -111,6 +172,7 @@ export default function Leaves() {
       queryClient.invalidateQueries({ queryKey: ['leaves'] });
       toast.success('Leave rejected');
     },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to reject leave'),
   });
 
   const applyMutation = useMutation({
@@ -133,6 +195,38 @@ export default function Leaves() {
   const handleUpdateLimits = (e: React.FormEvent) => {
     e.preventDefault();
     updateLimitsMutation.mutate(leaveLimits);
+  };
+
+  const handleTypeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedType) {
+      updateTypeMutation.mutate({ id: selectedType.id, data: typeFormData });
+    } else {
+      createTypeMutation.mutate(typeFormData);
+    }
+  };
+
+  const resetTypeForm = () => {
+    setTypeFormData({
+      name: '',
+      description: '',
+      is_paid: true,
+      default_days_per_year: 12,
+      status: 'active'
+    });
+    setSelectedType(null);
+  };
+
+  const handleEditType = (type: LeaveType) => {
+    setSelectedType(type);
+    setTypeFormData({
+      name: type.name,
+      description: type.description || '',
+      is_paid: type.is_paid,
+      default_days_per_year: type.default_days_per_year,
+      status: type.status
+    });
+    setIsTypeDialogOpen(true);
   };
 
   const myLeaves = leaves.filter((l: any) => l.employee_id === user?.id);
@@ -169,7 +263,7 @@ export default function Leaves() {
       header: 'Dates',
       cell: (leave) => (
         <div>
-          <p className="text-sm">{format(new Date(leave.start_date), 'MMM d')} - {format(new Date(leave.end_date), 'MMM d')}</p>
+          <p className="text-sm">{leave.start_date ? format(new Date(leave.start_date), 'MMM d') : ''} - {leave.end_date ? format(new Date(leave.end_date), 'MMM d') : ''}</p>
           <p className="text-xs text-muted-foreground">{leave.days} days</p>
         </div>
       ),
@@ -209,7 +303,7 @@ export default function Leaves() {
       header: 'Dates',
       cell: (leave) => (
         <div>
-          <p className="text-sm">{format(new Date(leave.start_date), 'MMM d')} - {format(new Date(leave.end_date), 'MMM d')}</p>
+          <p className="text-sm">{leave.start_date ? format(new Date(leave.start_date), 'MMM d') : ''} - {leave.end_date ? format(new Date(leave.end_date), 'MMM d') : ''}</p>
           <p className="text-xs text-muted-foreground">{leave.days} days</p>
         </div>
       ),
@@ -218,78 +312,199 @@ export default function Leaves() {
     { key: 'status', header: 'Status', cell: (leave) => <StatusBadge status={leave.status} /> },
   ];
 
-  // ... columns ...
+  const typeColumns: Column<LeaveType>[] = [
+    { key: 'name', header: 'Name', cell: (type) => <span className="font-bold text-primary">{type.name}</span> },
+    {
+      key: 'is_paid',
+      header: 'Paid',
+      cell: (type) => type.is_paid ?
+        <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Yes</span> :
+        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">No</span>
+    },
+    { key: 'default_days_per_year', header: 'Limit', cell: (type) => <span>{type.default_days_per_year}d</span> },
+    {
+      key: 'actions',
+      header: '',
+      cell: (type) => (
+        <div className="flex justify-end gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditType(type)}>
+            <Edit2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => {
+            if (confirm('Delete this leave type?')) deleteTypeMutation.mutate(type.id);
+          }}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )
+    }
+  ];
 
   return (
     <MainLayout>
       <div className="space-y-4 sm:space-y-6 animate-fade-in">
-        <PageHeader title="Leaves" description={isHR ? 'Manage employee leave requests' : 'Apply and track your leaves'}>
-          {!isHR && <Button onClick={() => setIsDialogOpen(true)}><Plus className="w-4 h-4 mr-2" />Apply Leave</Button>}
-          {isHR && (
-            <Button variant="outline" onClick={() => setIsSettingsOpen(true)}>
-              <Settings className="w-4 h-4 mr-2" />
-              Settings
-            </Button>
-          )}
-        </PageHeader>
+        <PageHeader title="Leaves" description={isHR ? 'Manage employee leave requests' : 'Apply and track your leaves'} />
+        {isHR ? (
+          <Tabs defaultValue="team" className="w-full">
+            <div className="flex items-center justify-between mb-6">
+              <TabsList>
+                <TabsTrigger value="team">Team Requests</TabsTrigger>
+                <TabsTrigger value="my-leaves">My Leaves</TabsTrigger>
+              </TabsList>
+              <div className="flex gap-2">
+                <TabsContent value="my-leaves" className="m-0">
+                  <Button onClick={() => setIsDialogOpen(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Apply Leave
+                  </Button>
+                </TabsContent>
+                <TabsContent value="team" className="m-0">
+                  <Button variant="outline" onClick={() => setIsSettingsOpen(true)}>
+                    <Settings className="w-4 h-4 mr-2" />
+                    Settings
+                  </Button>
+                </TabsContent>
+              </div>
+            </div>
 
-        {/* ... existing Cards ... */}
-        {!isHR && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            {myBalances.map((balance: any) => (
-              <Card key={balance.leave_type}>
-                <CardContent className="pt-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground capitalize">{balance.leave_type}</p>
-                      <p className="text-xl sm:text-2xl font-bold">{balance.remaining}</p>
-                      <p className="text-xs text-muted-foreground">of {balance.total} days</p>
-                    </div>
-                    <CalendarDays className="w-8 h-8 text-primary/20" />
-                  </div>
-                  <div className="mt-3 w-full bg-muted rounded-full h-2">
-                    <div className="bg-primary h-2 rounded-full" style={{ width: `${(balance.remaining / balance.total) * 100}%` }} />
-                  </div>
+            <TabsContent value="team" className="space-y-6">
+              <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center"><Clock className="w-5 h-5 text-warning" /></div><div><p className="text-xl sm:text-2xl font-bold">{leaves.filter((l: any) => l.status === 'pending').length}</p><p className="text-xs text-muted-foreground">Pending</p></div></div></CardContent></Card>
+                <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center"><Check className="w-5 h-5 text-success" /></div><div><p className="text-xl sm:text-2xl font-bold">{leaves.filter((l: any) => l.status === 'approved').length}</p><p className="text-xs text-muted-foreground">Approved</p></div></div></CardContent></Card>
+                <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center"><X className="w-5 h-5 text-destructive" /></div><div><p className="text-xl sm:text-2xl font-bold">{leaves.filter((l: any) => l.status === 'rejected').length}</p><p className="text-xs text-muted-foreground">Rejected</p></div></div></CardContent></Card>
+                <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-info/10 flex items-center justify-center"><Clock className="w-5 h-5 text-info" /></div><div><p className="text-xl sm:text-2xl font-bold">{leaves.filter((l: any) => l.status === 'approved' && new Date(l.start_date) <= new Date() && new Date(l.end_date) >= new Date()).length}</p><p className="text-xs text-muted-foreground">On Leave Now</p></div></div></CardContent></Card>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">Leave Requests</h3>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Card className="overflow-hidden">
+                <CardContent className="p-0">
+                  <DataTable
+                    columns={hrColumns}
+                    data={statusFilter === 'all' ? leaves : leaves.filter((l: any) => l.status === statusFilter)}
+                    keyExtractor={(leave: any) => leave.id}
+                    emptyMessage="No leave requests found"
+                  />
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        )}
+            </TabsContent>
 
-        {isHR && (
-          <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center"><Clock className="w-5 h-5 text-warning" /></div><div><p className="text-xl sm:text-2xl font-bold">{leaves.filter((l: any) => l.status === 'pending').length}</p><p className="text-xs text-muted-foreground">Pending</p></div></div></CardContent></Card>
-            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center"><Check className="w-5 h-5 text-success" /></div><div><p className="text-xl sm:text-2xl font-bold">{leaves.filter((l: any) => l.status === 'approved').length}</p><p className="text-xs text-muted-foreground">Approved</p></div></div></CardContent></Card>
-            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center"><X className="w-5 h-5 text-destructive" /></div><div><p className="text-xl sm:text-2xl font-bold">{leaves.filter((l: any) => l.status === 'rejected').length}</p><p className="text-xs text-muted-foreground">Rejected</p></div></div></CardContent></Card>
-            <Card><CardContent className="pt-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-info/10 flex items-center justify-center"><Clock className="w-5 h-5 text-info" /></div><div><p className="text-xl sm:text-2xl font-bold">{leaves.filter((l: any) => l.status === 'approved' && new Date(l.start_date) <= new Date() && new Date(l.end_date) >= new Date()).length}</p><p className="text-xs text-muted-foreground">On Leave Now</p></div></div></CardContent></Card>
-          </div>
-        )}
+            <TabsContent value="my-leaves" className="space-y-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                {myBalances.map((balance: any) => (
+                  <Card key={balance.leave_type}>
+                    <CardContent className="pt-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground capitalize">{balance.leave_type}</p>
+                          <p className="text-xl sm:text-2xl font-bold">{balance.remaining}</p>
+                          <p className="text-xs text-muted-foreground">of {balance.total} days</p>
+                        </div>
+                        <CalendarDays className="w-8 h-8 text-primary/20" />
+                      </div>
+                      <div className="mt-3 w-full bg-muted rounded-full h-2">
+                        <div className="bg-primary h-2 rounded-full" style={{ width: `${(balance.remaining / balance.total) * 100}%` }} />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[150px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
-          </SelectContent>
-        </Select>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">My Leave History</h3>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-        <Card className="overflow-hidden">
-          <CardHeader><CardTitle className="text-base">{isHR ? 'Leave Requests' : 'My Leave Requests'}</CardTitle></CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <DataTable
-                columns={isHR ? hrColumns : employeeColumns}
-                data={isHR ? leaves : myLeaves.filter((l: any) => statusFilter === 'all' || l.status === statusFilter)}
-                keyExtractor={(leave: any) => leave.id}
-                emptyMessage="No leave requests found"
-              />
+              <Card className="overflow-hidden">
+                <CardContent className="p-0">
+                  <DataTable
+                    columns={employeeColumns}
+                    data={myLeaves.filter((l: any) => statusFilter === 'all' || l.status === statusFilter)}
+                    keyExtractor={(leave: any) => leave.id}
+                    emptyMessage="No leave requests found"
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <>
+            <div className="flex justify-end mb-6">
+              <Button onClick={() => setIsDialogOpen(true)}><Plus className="w-4 h-4 mr-2" />Apply Leave</Button>
             </div>
-          </CardContent>
-        </Card>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+              {myBalances.map((balance: any) => (
+                <Card key={balance.leave_type}>
+                  <CardContent className="pt-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground capitalize">{balance.leave_type}</p>
+                        <p className="text-xl sm:text-2xl font-bold">{balance.remaining}</p>
+                        <p className="text-xs text-muted-foreground">of {balance.total} days</p>
+                      </div>
+                      <CalendarDays className="w-8 h-8 text-primary/20" />
+                    </div>
+                    <div className="mt-3 w-full bg-muted rounded-full h-2">
+                      <div className="bg-primary h-2 rounded-full" style={{ width: `${(balance.remaining / balance.total) * 100}%` }} />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium">My Leave History</h3>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Card className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <DataTable
+                    columns={employeeColumns}
+                    data={myLeaves.filter((l: any) => statusFilter === 'all' || l.status === statusFilter)}
+                    keyExtractor={(leave: any) => leave.id}
+                    emptyMessage="No leave requests found"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
 
         {/* Apply Leave Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -304,9 +519,18 @@ export default function Leaves() {
                 <Select value={formData.leave_type} onValueChange={(val) => setFormData({ ...formData, leave_type: val })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="sick">Sick Leave</SelectItem>
-                    <SelectItem value="earned">Privilege / Earned Leave</SelectItem>
-                    <SelectItem value="casual">Casual Leave</SelectItem>
+                    {leaveTypes.filter((t: any) => t.status === 'active').map((type: any) => (
+                      <SelectItem key={type.id} value={type.name.toLowerCase()}>
+                        {type.name}
+                      </SelectItem>
+                    ))}
+                    {leaveTypes.filter((t: any) => t.status === 'active').length === 0 && (
+                      <>
+                        <SelectItem value="sick">Sick Leave</SelectItem>
+                        <SelectItem value="earned">Privilege / Earned Leave</SelectItem>
+                        <SelectItem value="casual">Casual Leave</SelectItem>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -332,51 +556,156 @@ export default function Leaves() {
           </DialogContent>
         </Dialog>
 
-        {/* Leave Limits Settings Dialog - HR Only */}
+        {/* Leave Settings Dialog - HR Only */}
         <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Leave Policy Settings</DialogTitle>
-              <DialogDescription>Set the annual leave limits for all employees.</DialogDescription>
+              <DialogTitle>Leave Module Settings</DialogTitle>
+              <DialogDescription>Configure leave policies and categories.</DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleUpdateLimits} className="space-y-4">
+
+            <Tabs defaultValue="limits" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="limits">Annual Limits</TabsTrigger>
+                <TabsTrigger value="types">Manage Categories</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="limits">
+                <form onSubmit={handleUpdateLimits} className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="casual">Casual Leave (Days/Year)</Label>
+                    <Input
+                      id="casual"
+                      type="number"
+                      min="0"
+                      value={leaveLimits.casual_leave}
+                      onChange={(e) => setLeaveLimits({ ...leaveLimits, casual_leave: Number(e.target.value) })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sick">Sick Leave (Days/Year)</Label>
+                    <Input
+                      id="sick"
+                      type="number"
+                      min="0"
+                      value={leaveLimits.sick_leave}
+                      onChange={(e) => setLeaveLimits({ ...leaveLimits, sick_leave: Number(e.target.value) })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="earned">Earned/Privilege Leave (Days/Year)</Label>
+                    <Input
+                      id="earned"
+                      type="number"
+                      min="0"
+                      value={leaveLimits.earned_leave}
+                      onChange={(e) => setLeaveLimits({ ...leaveLimits, earned_leave: Number(e.target.value) })}
+                      required
+                    />
+                  </div>
+                  <DialogFooter className="pt-4">
+                    <Button type="button" variant="outline" onClick={() => setIsSettingsOpen(false)}>Cancel</Button>
+                    <Button type="submit" disabled={updateLimitsMutation.isPending}>
+                      {updateLimitsMutation.isPending ? 'Saving...' : 'Save Limits'}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="types">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-sm font-medium">Leave Categories</h4>
+                    <Button size="sm" onClick={() => { resetTypeForm(); setIsTypeDialogOpen(true); }}>
+                      <Plus className="w-4 h-4 mr-2" /> Add Type
+                    </Button>
+                  </div>
+                  <div className="border rounded-lg">
+                    <DataTable
+                      columns={typeColumns}
+                      data={leaveTypes}
+                      keyExtractor={(t) => t.id}
+                      emptyMessage="No custom types."
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </DialogContent>
+        </Dialog>
+
+        {/* Leave Type Edit Dialog */}
+        <Dialog open={isTypeDialogOpen} onOpenChange={setIsTypeDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>{selectedType ? 'Edit Type' : 'New Leave Type'}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleTypeSubmit} className="space-y-4 pt-4">
               <div className="space-y-2">
-                <Label htmlFor="casual">Casual Leave (Days/Year)</Label>
+                <Label htmlFor="typeName">Name</Label>
                 <Input
-                  id="casual"
-                  type="number"
-                  min="0"
-                  value={leaveLimits.casual_leave}
-                  onChange={(e) => setLeaveLimits({ ...leaveLimits, casual_leave: Number(e.target.value) })}
+                  id="typeName"
+                  value={typeFormData.name}
+                  onChange={(e) => setTypeFormData({ ...typeFormData, name: e.target.value })}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="sick">Sick Leave (Days/Year)</Label>
-                <Input
-                  id="sick"
-                  type="number"
-                  min="0"
-                  value={leaveLimits.sick_leave}
-                  onChange={(e) => setLeaveLimits({ ...leaveLimits, sick_leave: Number(e.target.value) })}
-                  required
+                <Label htmlFor="typeDesc">Description</Label>
+                <Textarea
+                  id="typeDesc"
+                  value={typeFormData.description}
+                  onChange={(e) => setTypeFormData({ ...typeFormData, description: e.target.value })}
+                  rows={2}
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="typeDays">Annual Limit</Label>
+                  <Input
+                    id="typeDays"
+                    type="number"
+                    value={typeFormData.default_days_per_year}
+                    onChange={(e) => setTypeFormData({ ...typeFormData, default_days_per_year: Number(e.target.value) })}
+                    required
+                  />
+                </div>
+                <div className="flex items-center space-x-2 pt-8">
+                  <Switch
+                    id="typePaid"
+                    checked={typeFormData.is_paid}
+                    onCheckedChange={(checked) => setTypeFormData({ ...typeFormData, is_paid: checked })}
+                  />
+                  <Label htmlFor="typePaid">Paid Leave</Label>
+                </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="earned">Earned/Privilege Leave (Days/Year)</Label>
-                <Input
-                  id="earned"
-                  type="number"
-                  min="0"
-                  value={leaveLimits.earned_leave}
-                  onChange={(e) => setLeaveLimits({ ...leaveLimits, earned_leave: Number(e.target.value) })}
-                  required
-                />
+                <Label>Status</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={typeFormData.status === 'active' ? 'default' : 'outline'}
+                    className="flex-1 h-8 text-xs"
+                    onClick={() => setTypeFormData({ ...typeFormData, status: 'active' })}
+                  >
+                    Active
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={typeFormData.status === 'inactive' ? 'destructive' : 'outline'}
+                    className="flex-1 h-8 text-xs"
+                    onClick={() => setTypeFormData({ ...typeFormData, status: 'inactive' })}
+                  >
+                    Inactive
+                  </Button>
+                </div>
               </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsSettingsOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={updateLimitsMutation.isPending}>
-                  {updateLimitsMutation.isPending ? 'Saving...' : 'Save Settings'}
+              <DialogFooter className="pt-4">
+                <Button type="button" variant="outline" size="sm" onClick={() => setIsTypeDialogOpen(false)}>Cancel</Button>
+                <Button type="submit" size="sm" disabled={createTypeMutation.isPending || updateTypeMutation.isPending}>
+                  {selectedType ? 'Update' : 'Create'}
                 </Button>
               </DialogFooter>
             </form>

@@ -35,6 +35,12 @@ export function MarkAttendanceModal({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
+        if (!formData.notes) {
+            alert('Please provide a reason/notes for manual attendance entry.');
+            return;
+        }
+
+
         const dateStr = format(date, 'yyyy-MM-dd');
 
         onSave({
@@ -116,14 +122,16 @@ export function MarkAttendanceModal({
 
                     {/* Notes */}
                     <div className="space-y-2">
-                        <Label htmlFor="mark_notes">Notes</Label>
+                        <Label htmlFor="mark_notes">Reason/Notes*</Label>
                         <Textarea
                             id="mark_notes"
                             value={formData.notes}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            placeholder="Additional notes..."
-                            rows={2}
+                            placeholder="Exceptional case description..."
+                            rows={3}
+                            required
                         />
+                        <p className="text-[10px] text-muted-foreground">Manual attendance additions should be restricted to exceptional cases and must be logged.</p>
                     </div>
 
                     <DialogFooter>

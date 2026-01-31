@@ -8,6 +8,7 @@ import designationRoutes from './designationRoutes';
 import attendanceRoutes from './attendanceRoutes';
 import leaveRoutes from './leaveRoutes';
 import leaveLimitRoutes from './leaveLimitRoutes';
+import leaveTypeRoutes from './leaveTypeRoutes';
 import payrollRoutes from './payrollRoutesSimplified';
 import payrollConfigRoutes from './payrollConfigRoutes';
 import reimbursementRoutes from './reimbursementRoutes';
@@ -19,10 +20,13 @@ import regularizationRoutes from './regularizationRoutes';
 import taskLogRoutes from './taskLogRoutes';
 import meetingRoutes from './meetingRoutes';
 
+import systemSettingsRoutes from './systemSettingsRoutes';
+
 const router = express.Router();
 
 router.use('/auth', authRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use('/system-settings', systemSettingsRoutes);
 router.use('/employees', employeeRoutes);
 router.use('/employees', employeeDocumentRoutes);
 router.use('/departments', departmentRoutes);
@@ -30,6 +34,7 @@ router.use('/designations', designationRoutes);
 router.use('/attendance', attendanceRoutes);
 router.use('/leaves', leaveRoutes);
 router.use('/leave-limits', leaveLimitRoutes);
+router.use('/leave-types', leaveTypeRoutes);
 router.use('/payroll', payrollRoutes);
 router.use('/payroll-config', payrollConfigRoutes);
 router.use('/reimbursements', reimbursementRoutes);

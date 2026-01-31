@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { TaskLog, User } from '../models';
 import { AppError } from '../middleware/errorHandler';
+import { Op } from 'sequelize';
 
 export const logTask = async (req: AuthRequest, res: Response): Promise<void> => {
     const { task_name, description, date, start_time, end_time, hours_spent, status } = req.body;
@@ -43,7 +44,12 @@ export const getAllTasks = async (req: AuthRequest, res: Response): Promise<void
 
     const tasks = await TaskLog.findAll({
         where,
-        include: [{ model: User, as: 'employee', attributes: ['name', 'employee_id'] }],
+        include: [{
+            model: User,
+            as: 'employee',
+            attributes: ['name', 'employee_id'],
+            where: req.user?.role === 'hr' ? { role: { [Op.ne]: 'admin' } } : undefined
+        }],
         order: [['date', 'DESC'], ['created_at', 'DESC']],
     });
     res.json(tasks);

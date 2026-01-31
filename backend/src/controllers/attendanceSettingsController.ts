@@ -14,6 +14,7 @@ export const getAttendanceSettings = async (_req: AuthRequest, res: Response): P
                 standard_work_hours: 8.00,
                 half_day_threshold: 4.00,
                 allow_self_clock_in: true,
+                auto_half_day_time: '19:00',
             });
         }
 
@@ -34,7 +35,12 @@ export const updateAttendanceSettings = async (req: AuthRequest, res: Response):
             throw new AppError(403, 'Permission denied');
         }
 
-        const { standard_work_hours, half_day_threshold, allow_self_clock_in } = req.body;
+        const {
+            standard_work_hours,
+            half_day_threshold,
+            allow_self_clock_in,
+            auto_half_day_time
+        } = req.body;
 
         // Validate inputs
         if (standard_work_hours !== undefined && (standard_work_hours < 0 || standard_work_hours > 24)) {
@@ -57,12 +63,14 @@ export const updateAttendanceSettings = async (req: AuthRequest, res: Response):
                 standard_work_hours: standard_work_hours || 8.00,
                 half_day_threshold: half_day_threshold || 4.00,
                 allow_self_clock_in: allow_self_clock_in !== undefined ? allow_self_clock_in : true,
+                auto_half_day_time: auto_half_day_time || '19:00',
             });
         } else {
             await settings.update({
                 standard_work_hours: standard_work_hours !== undefined ? standard_work_hours : settings.standard_work_hours,
                 half_day_threshold: half_day_threshold !== undefined ? half_day_threshold : settings.half_day_threshold,
                 allow_self_clock_in: allow_self_clock_in !== undefined ? allow_self_clock_in : settings.allow_self_clock_in,
+                auto_half_day_time: auto_half_day_time !== undefined ? auto_half_day_time : settings.auto_half_day_time,
             });
         }
 

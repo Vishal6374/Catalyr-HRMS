@@ -5,6 +5,7 @@ import LeaveBalance from '../models/LeaveBalance';
 import AttendanceLog from '../models/AttendanceLog';
 import { AppError } from '../middleware/errorHandler';
 import { calculateWorkingDays } from '../utils/helpers';
+import { Op } from 'sequelize';
 
 export const getLeaveRequests = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
@@ -12,11 +13,19 @@ export const getLeaveRequests = async (req: AuthRequest, res: Response): Promise
 
         const where: any = {};
 
-        // If not HR, only show own leaves
-        if (req.user?.role !== 'hr') {
+        // If Admin, show everything
+        // If HR, show everyone except Admins (wait, prompt says HR requests by Admin only, so HR should probably see them to manage them?)
+        // Let's stick to: HR sees employees, Admin sees everyone.
+        if (req.user?.role === 'admin') {
+            // Admin sees all
+        } else if (req.user?.role === 'hr') {
+            // HR sees employees (but not admins)
+            if (employee_id) {
+                where.employee_id = employee_id;
+            }
+        } else {
+            // Employees see only themselves
             where.employee_id = req.user?.id;
-        } else if (employee_id) {
-            where.employee_id = employee_id;
         }
 
         if (status && status !== 'all') {
@@ -26,7 +35,11 @@ export const getLeaveRequests = async (req: AuthRequest, res: Response): Promise
         const leaves = await LeaveRequest.findAll({
             where,
             include: [
-                { association: 'employee', attributes: ['id', 'name', 'email', 'employee_id'] },
+                {
+                    association: 'employee',
+                    attributes: ['id', 'name', 'email', 'employee_id', 'role'],
+                    where: req.user?.role === 'hr' ? { role: { [Op.ne]: 'admin' } } : undefined
+                },
                 { association: 'approver', attributes: ['id', 'name', 'email'] },
             ],
             order: [['created_at', 'DESC']],
@@ -191,14 +204,27 @@ export const approveLeave = async (req: AuthRequest, res: Response): Promise<voi
         const { id } = req.params;
         const { remarks } = req.body;
 
-        if (req.user?.role !== 'hr') {
-            throw new AppError(403, 'Only HR can approve leaves');
+        if (req.user?.role !== 'hr' && req.user?.role !== 'admin') {
+            throw new AppError(403, 'Permission denied');
         }
 
-        const leaveRequest = await LeaveRequest.findByPk(id as string);
+        const leaveRequest = await LeaveRequest.findByPk(id as string, {
+            include: [{ association: 'employee', attributes: ['role'] }]
+        });
 
         if (!leaveRequest) {
             throw new AppError(404, 'Leave request not found');
+        }
+
+        // Apply restricted logic: Requests by HR can only be approved by Admin
+        const applicant = leaveRequest.get('employee') as any;
+        if (applicant?.role === 'hr' && req.user.role !== 'admin') {
+            throw new AppError(403, 'HR requests can only be approved by Admin');
+        }
+
+        // Prevent self-approval
+        if (leaveRequest.employee_id === req.user.id) {
+            throw new AppError(400, 'You cannot approve your own request');
         }
 
         if (leaveRequest.status !== 'pending') {
@@ -265,14 +291,27 @@ export const rejectLeave = async (req: AuthRequest, res: Response): Promise<void
         const { id } = req.params;
         const { remarks } = req.body;
 
-        if (req.user?.role !== 'hr') {
-            throw new AppError(403, 'Only HR can reject leaves');
+        if (req.user?.role !== 'hr' && req.user?.role !== 'admin') {
+            throw new AppError(403, 'Permission denied');
         }
 
-        const leaveRequest = await LeaveRequest.findByPk(id as string);
+        const leaveRequest = await LeaveRequest.findByPk(id as string, {
+            include: [{ association: 'employee', attributes: ['role'] }]
+        });
 
         if (!leaveRequest) {
             throw new AppError(404, 'Leave request not found');
+        }
+
+        // Apply restricted logic: Requests by HR can only be rejected by Admin
+        const applicant = leaveRequest.get('employee') as any;
+        if (applicant?.role === 'hr' && req.user.role !== 'admin') {
+            throw new AppError(403, 'HR requests can only be rejected by Admin');
+        }
+
+        // Prevent self-rejection
+        if (leaveRequest.employee_id === req.user.id) {
+            throw new AppError(400, 'You cannot reject your own request');
         }
 
         if (leaveRequest.status !== 'pending') {

@@ -24,6 +24,7 @@ export function AttendanceSettings() {
         standard_work_hours: settings?.standard_work_hours || 8,
         half_day_threshold: settings?.half_day_threshold || 4,
         allow_self_clock_in: settings?.allow_self_clock_in ?? true,
+        auto_half_day_time: settings?.auto_half_day_time || '19:00',
     });
 
     // Update form when settings load
@@ -33,6 +34,7 @@ export function AttendanceSettings() {
                 standard_work_hours: settings.standard_work_hours,
                 half_day_threshold: settings.half_day_threshold,
                 allow_self_clock_in: settings.allow_self_clock_in ?? true,
+                auto_half_day_time: settings.auto_half_day_time,
             });
         }
     }, [settings]);
@@ -149,6 +151,21 @@ export function AttendanceSettings() {
                         />
                     </div>
 
+
+
+                    <div className="space-y-2">
+                        <Label htmlFor="auto_half_day_time">Auto Half-Day Mark Time (12-hour format)</Label>
+                        <Input
+                            id="auto_half_day_time"
+                            type="time"
+                            value={formData.auto_half_day_time}
+                            onChange={(e) => setFormData({ ...formData, auto_half_day_time: e.target.value })}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Employees not clocked out by this time will be marked as Half Day.
+                        </p>
+                    </div>
+
                     {/* Info Box */}
                     <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                         <div className="flex gap-2">
@@ -170,7 +187,7 @@ export function AttendanceSettings() {
                         {updateMutation.isPending ? 'Saving...' : 'Save Settings'}
                     </Button>
                 </form>
-            </CardContent>
-        </Card>
+            </CardContent >
+        </Card >
     );
 }

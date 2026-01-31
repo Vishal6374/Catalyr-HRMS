@@ -86,7 +86,14 @@ export default function MyPayslips() {
             key: 'deductions',
             header: 'Deductions',
             cell: (slip) => {
-                const totalDeductions = Number(slip.lop) + Number(slip.other_deductions);
+                const deductions = slip.deductions || {};
+                const totalDeductions =
+                    (Number(deductions.pf) || 0) +
+                    (Number(deductions.tax) || 0) +
+                    (Number(deductions.esi) || 0) +
+                    (Number(deductions.loss_of_pay) || Number(deductions.lop) || Number(slip.lop) || 0) +
+                    (Number(deductions.other) || Number(slip.other_deductions) || 0);
+
                 return (
                     <span className="text-destructive">
                         -₹{totalDeductions.toLocaleString('en-IN')}

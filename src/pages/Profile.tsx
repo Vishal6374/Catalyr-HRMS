@@ -81,7 +81,13 @@ export default function Profile() {
 
   const latestResignation = myResignations[0];
   const hasActiveResignation = latestResignation && (latestResignation.status === 'pending' || latestResignation.status === 'approved');
-  const isLocked = employee?.onboarding_status === 'locked';
+
+  // Calculate lock status
+  const createdAt = employee?.created_at ? new Date(employee.created_at) : new Date();
+  const hoursSinceCreation = (new Date().getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+  const isTimeLocked = (user?.role === 'employee') && (hoursSinceCreation > 48);
+
+  const isLocked = employee?.onboarding_status === 'locked' || isTimeLocked;
 
   useEffect(() => {
     if (employee) {
@@ -261,7 +267,7 @@ export default function Profile() {
             <TabsTrigger value="personal">Personal Info</TabsTrigger>
             <TabsTrigger value="employment">Employment</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="exit">Exit Management</TabsTrigger>
+            <TabsTrigger value="exit">Resignations</TabsTrigger>
           </TabsList>
 
           {/* Personal Information */}
@@ -291,7 +297,10 @@ export default function Profile() {
                 {isLocked && (
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm flex items-center gap-2 mb-4">
                     <CheckCircle2 className="w-4 h-4" />
-                    Your onboarding profile has been approved and locked. Contact HR for any changes.
+                    {isTimeLocked
+                      ? "Profile editing is disabled 48 hours after onboarding. Contact HR for any changes."
+                      : "Your onboarding profile has been approved and locked. Contact HR for any changes."
+                    }
                   </div>
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
@@ -416,7 +425,7 @@ export default function Profile() {
             </Card>
           </TabsContent>
 
-          {/* Exit Management */}
+          {/* Resignations */}
           <TabsContent value="exit">
             <Card>
               <CardHeader>
@@ -478,7 +487,11 @@ export default function Profile() {
                         <p className="text-sm text-muted-foreground mt-1">
                           {latestResignation.status === 'pending'
                             ? "Your resignation request is currently being reviewed by HR."
-                            : `Your resignation has been approved. Your final working day is ${format(new Date(latestResignation.approvedLastWorkingDay || latestResignation.preferredLastWorkingDay), 'MMMM d, yyyy')}.`
+                            : (() => {
+                              const lDate = new Date(latestResignation.approvedLastWorkingDay || latestResignation.preferredLastWorkingDay);
+                              const lDateStr = !isNaN(lDate.getTime()) ? format(lDate, 'MMMM d, yyyy') : 'N/A';
+                              return `Your resignation has been approved. Your final working day is ${lDateStr}.`;
+                            })()
                           }
                         </p>
                         {latestResignation.hrRemarks && (
@@ -494,8 +507,13 @@ export default function Profile() {
                       <div className="space-y-3">
                         {myResignations.map((res: any) => (
                           <div key={res.id} className="p-4 rounded-lg border bg-card flex items-center justify-between text-sm">
-                            <div>
-                              <p className="font-medium">Applied on {format(new Date(res.createdAt), 'MMM dd, yyyy')}</p>
+                            <div className="flex-1">
+                              <p className="font-medium">
+                                {(() => {
+                                  const cDate = new Date(res.createdAt);
+                                  return `Applied on ${!isNaN(cDate.getTime()) ? format(cDate, 'MMM dd, yyyy') : 'N/A'}`;
+                                })()}
+                              </p>
                               <p className="text-xs text-muted-foreground">Reason: {res.reason.substring(0, 50)}...</p>
                             </div>
                             <StatusBadge status={res.status} />
@@ -530,7 +548,12 @@ export default function Profile() {
                         <div className="flex-1 min-w-0">
                           <p className="font-bold truncate" title={doc.document_type}>{doc.document_type}</p>
                           <p className="text-xs text-muted-foreground truncate" title={doc.file_name}>{doc.file_name}</p>
-                          <p className="text-[10px] text-muted-foreground mt-1">Uploaded {format(new Date(doc.createdAt), 'MMM dd, yyyy')}</p>
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            {(() => {
+                              const uDate = new Date(doc.createdAt);
+                              return `Uploaded ${!isNaN(uDate.getTime()) ? format(uDate, 'MMM dd, yyyy') : 'N/A'}`;
+                            })()}
+                          </p>
                         </div>
                         <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button variant="ghost" size="icon" className="h-8 w-8" asChild>

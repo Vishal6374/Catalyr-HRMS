@@ -2,6 +2,7 @@ import { Response } from 'express';
 import type { AuthRequest } from '../middleware/auth';
 import Complaint from '../models/Complaint';
 import { AppError } from '../middleware/errorHandler';
+import { Op } from 'sequelize';
 
 /* -------------------------------------------------------------------------- */
 /*                               GET COMPLAINTS                                */
@@ -19,10 +20,16 @@ export const getComplaints = async (
 
         const where: Record<string, unknown> = {};
 
-        if (req.user?.role !== 'hr') {
+        if (req.user?.role === 'admin') {
+            // Admin sees all
+        } else if (req.user?.role === 'hr') {
+            // HR sees everyone except Admins
+            if (employee_id) {
+                where.employee_id = employee_id;
+            }
+        } else {
+            // Employees see only their own
             where.employee_id = req.user?.id;
-        } else if (employee_id) {
-            where.employee_id = employee_id;
         }
 
         if (status) {
@@ -32,10 +39,14 @@ export const getComplaints = async (
         const complaints = await Complaint.findAll({
             where,
             include: [
-                { association: 'employee', attributes: ['id', 'name', 'email', 'employee_id'] },
+                {
+                    association: 'employee',
+                    attributes: ['id', 'name', 'email', 'employee_id', 'role'],
+                    where: req.user?.role === 'hr' ? { role: { [Op.ne]: 'admin' } } : undefined
+                },
                 { association: 'responder', attributes: ['id', 'name', 'email'] },
             ],
-            order: [['createdAt', 'DESC']], // ✅ Sequelize field name
+            order: [['created_at', 'DESC']],
         });
 
         res.json(complaints);
@@ -111,13 +122,27 @@ export const respondToComplaint = async (
             status?: 'in_progress' | 'closed';
         };
 
-        if (req.user?.role !== 'hr') {
-            throw new AppError(403, 'Only HR can respond to complaints');
+        if (req.user?.role !== 'hr' && req.user?.role !== 'admin') {
+            throw new AppError(403, 'Permission denied');
         }
 
-        const complaint = await Complaint.findByPk(id as string);
+        const complaint = await Complaint.findByPk(id as string, {
+            include: [{ association: 'employee', attributes: ['role'] }]
+        });
+
         if (!complaint) {
             throw new AppError(404, 'Complaint not found');
+        }
+
+        // Apply restricted logic: Complaints by HR can only be responded to by Admin
+        const applicant = complaint.get('employee') as any;
+        if (applicant?.role === 'hr' && req.user.role !== 'admin') {
+            throw new AppError(403, 'HR complaints can only be responded to by Admin');
+        }
+
+        // Prevent self-response
+        if (complaint.employee_id === req.user.id) {
+            throw new AppError(400, 'You cannot respond to your own complaint');
         }
 
         complaint.response = response;
@@ -152,13 +177,27 @@ export const closeComplaint = async (
     try {
         const { id } = req.params;
 
-        if (req.user?.role !== 'hr') {
-            throw new AppError(403, 'Only HR can close complaints');
+        if (req.user?.role !== 'hr' && req.user?.role !== 'admin') {
+            throw new AppError(403, 'Permission denied');
         }
 
-        const complaint = await Complaint.findByPk(id as string);
+        const complaint = await Complaint.findByPk(id as string, {
+            include: [{ association: 'employee', attributes: ['role'] }]
+        });
+
         if (!complaint) {
             throw new AppError(404, 'Complaint not found');
+        }
+
+        // Apply restricted logic: Complaints by HR can only be closed by Admin
+        const applicant = complaint.get('employee') as any;
+        if (applicant?.role === 'hr' && req.user.role !== 'admin') {
+            throw new AppError(403, 'HR complaints can only be closed by Admin');
+        }
+
+        // Prevent self-closing
+        if (complaint.employee_id === req.user.id) {
+            throw new AppError(400, 'You cannot close your own complaint');
         }
 
         complaint.status = 'closed';

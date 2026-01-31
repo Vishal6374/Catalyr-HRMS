@@ -2,16 +2,23 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import Reimbursement from '../models/Reimbursement';
 import { AppError } from '../middleware/errorHandler';
+import { Op } from 'sequelize';
 
 export const getReimbursements = async (req: AuthRequest, res: Response): Promise<void> => {
     const { status, employee_id } = req.query;
 
     const where: any = {};
 
-    if (req.user?.role !== 'hr') {
+    if (req.user?.role === 'admin') {
+        // Admin sees all
+    } else if (req.user?.role === 'hr') {
+        // HR sees everyone except Admins (or based on company policy, usually they manage employees)
+        if (employee_id) {
+            where.employee_id = employee_id;
+        }
+    } else {
+        // Employees see only their own
         where.employee_id = req.user?.id;
-    } else if (employee_id) {
-        where.employee_id = employee_id;
     }
 
     if (status) {
@@ -21,7 +28,11 @@ export const getReimbursements = async (req: AuthRequest, res: Response): Promis
     const reimbursements = await Reimbursement.findAll({
         where,
         include: [
-            { association: 'employee', attributes: ['id', 'name', 'email', 'employee_id'] },
+            {
+                association: 'employee',
+                attributes: ['id', 'name', 'email', 'employee_id', 'role'],
+                where: req.user?.role === 'hr' ? { role: { [Op.ne]: 'admin' } } : undefined
+            },
             { association: 'approver', attributes: ['id', 'name', 'email'] },
         ],
         order: [['created_at', 'DESC']],
@@ -52,14 +63,27 @@ export const approveReimbursement = async (req: AuthRequest, res: Response): Pro
     const { id } = req.params;
     const { remarks } = req.body;
 
-    if (req.user?.role !== 'hr') {
-        throw new AppError(403, 'Only HR can approve reimbursements');
+    if (req.user?.role !== 'hr' && req.user?.role !== 'admin') {
+        throw new AppError(403, 'Permission denied');
     }
 
-    const reimbursement = await Reimbursement.findByPk(id as string);
+    const reimbursement = await Reimbursement.findByPk(id as string, {
+        include: [{ association: 'employee', attributes: ['role'] }]
+    });
 
     if (!reimbursement) {
         throw new AppError(404, 'Reimbursement not found');
+    }
+
+    // Apply restricted logic: Requests by HR can only be approved by Admin
+    const applicant = reimbursement.get('employee') as any;
+    if (applicant?.role === 'hr' && req.user.role !== 'admin') {
+        throw new AppError(403, 'HR requests can only be approved by Admin');
+    }
+
+    // Prevent self-approval
+    if (reimbursement.employee_id === req.user.id) {
+        throw new AppError(400, 'You cannot approve your own request');
     }
 
     if (reimbursement.status !== 'pending') {
@@ -82,14 +106,27 @@ export const rejectReimbursement = async (req: AuthRequest, res: Response): Prom
     const { id } = req.params;
     const { remarks } = req.body;
 
-    if (req.user?.role !== 'hr') {
-        throw new AppError(403, 'Only HR can reject reimbursements');
+    if (req.user?.role !== 'hr' && req.user?.role !== 'admin') {
+        throw new AppError(403, 'Permission denied');
     }
 
-    const reimbursement = await Reimbursement.findByPk(id as string);
+    const reimbursement = await Reimbursement.findByPk(id as string, {
+        include: [{ association: 'employee', attributes: ['role'] }]
+    });
 
     if (!reimbursement) {
         throw new AppError(404, 'Reimbursement not found');
+    }
+
+    // Apply restricted logic: Requests by HR can only be rejected by Admin
+    const applicant = reimbursement.get('employee') as any;
+    if (applicant?.role === 'hr' && req.user.role !== 'admin') {
+        throw new AppError(403, 'HR requests can only be rejected by Admin');
+    }
+
+    // Prevent self-rejection
+    if (reimbursement.employee_id === req.user.id) {
+        throw new AppError(400, 'You cannot reject your own request');
     }
 
     if (reimbursement.status !== 'pending') {

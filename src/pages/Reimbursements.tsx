@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, DollarSign, FileText, Check, X, Paperclip } from 'lucide-react';
 import { format } from 'date-fns';
@@ -169,60 +170,168 @@ export default function Reimbursements() {
   return (
     <MainLayout>
       <div className="space-y-4 sm:space-y-6 animate-fade-in">
-        <PageHeader title="Reimbursements" description={isHR ? 'Manage employee reimbursement claims' : 'Submit and track reimbursement claims'}>
-          {!isHR && (
-            <Button onClick={openCreateDialog}>
-              <Plus className="w-4 h-4 mr-2" />
-              New Claim
-            </Button>
-          )}
-        </PageHeader>
+        <PageHeader title="Reimbursements" description={isHR ? 'Manage employee reimbursement claims' : 'Submit and track reimbursement claims'} />
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          <div className="p-4 rounded-xl bg-card border">
-            <p className="text-sm text-muted-foreground">Total Claims</p>
-            <p className="text-xl sm:text-2xl font-bold">{isHR ? reimbursements.length : myReimbursements.length}</p>
-          </div>
-          <div className="p-4 rounded-xl bg-card border">
-            <p className="text-sm text-muted-foreground">Pending Approval</p>
-            <p className="text-xl sm:text-2xl font-bold">
-              {isHR
-                ? reimbursements.filter((r: any) => r.status === 'pending').length
-                : myReimbursements.filter((r: any) => r.status === 'pending').length}
-            </p>
-          </div>
-          <div className="p-4 rounded-xl bg-card border">
-            <p className="text-sm text-muted-foreground">Total Amount</p>
-            <p className="text-xl sm:text-2xl font-bold">
-              ₹{(isHR ? reimbursements : myReimbursements)
-                .filter((r: any) => r.status === 'approved')
-                .reduce((sum: number, r: any) => sum + Number(r.amount), 0)
-                .toLocaleString()}
-            </p>
-          </div>
-        </div>
+        {isHR ? (
+          <Tabs defaultValue="team" className="w-full">
+            <div className="flex items-center justify-between mb-6">
+              <TabsList>
+                <TabsTrigger value="team">Team Claims</TabsTrigger>
+                <TabsTrigger value="my-claims">My Claims</TabsTrigger>
+              </TabsList>
+              <div className="flex gap-2">
+                <TabsContent value="my-claims" className="m-0">
+                  <Button onClick={openCreateDialog}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    New Claim
+                  </Button>
+                </TabsContent>
+              </div>
+            </div>
 
-        <div className="flex items-center gap-4">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[150px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+            <TabsContent value="team" className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div className="p-4 rounded-xl bg-card border">
+                  <p className="text-sm text-muted-foreground">Total Claims</p>
+                  <p className="text-xl sm:text-2xl font-bold">{reimbursements.length}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-card border">
+                  <p className="text-sm text-muted-foreground">Pending Approval</p>
+                  <p className="text-xl sm:text-2xl font-bold">
+                    {reimbursements.filter((r: any) => r.status === 'pending').length}
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-card border">
+                  <p className="text-sm text-muted-foreground">Total Amount</p>
+                  <p className="text-xl sm:text-2xl font-bold">
+                    ₹{reimbursements
+                      .filter((r: any) => r.status === 'approved')
+                      .reduce((sum: number, r: any) => sum + Number(r.amount), 0)
+                      .toLocaleString()}
+                  </p>
+                </div>
+              </div>
 
-        <DataTable
-          columns={isHR ? hrColumns : employeeColumns}
-          data={isHR ? reimbursements : myReimbursements}
-          keyExtractor={(reimburse) => reimburse.id}
-          emptyMessage="No reimbursement claims found"
-        />
+              <div className="flex items-center gap-4">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <DataTable
+                columns={hrColumns}
+                data={statusFilter === 'all' ? reimbursements : reimbursements.filter((r: any) => r.status === statusFilter)}
+                keyExtractor={(reimburse) => reimburse.id}
+                emptyMessage="No reimbursement claims found"
+              />
+            </TabsContent>
+
+            <TabsContent value="my-claims" className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div className="p-4 rounded-xl bg-card border">
+                  <p className="text-sm text-muted-foreground">Total Claims</p>
+                  <p className="text-xl sm:text-2xl font-bold">{myReimbursements.length}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-card border">
+                  <p className="text-sm text-muted-foreground">Pending Approval</p>
+                  <p className="text-xl sm:text-2xl font-bold">
+                    {myReimbursements.filter((r: any) => r.status === 'pending').length}
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-card border">
+                  <p className="text-sm text-muted-foreground">Total Amount</p>
+                  <p className="text-xl sm:text-2xl font-bold">
+                    ₹{myReimbursements
+                      .filter((r: any) => r.status === 'approved')
+                      .reduce((sum: number, r: any) => sum + Number(r.amount), 0)
+                      .toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <DataTable
+                columns={employeeColumns}
+                data={statusFilter === 'all' ? myReimbursements : myReimbursements.filter((r: any) => r.status === statusFilter)}
+                keyExtractor={(reimburse) => reimburse.id}
+                emptyMessage="No reimbursement claims found"
+              />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <>
+            <div className="flex justify-end mb-6">
+              <Button onClick={openCreateDialog}>
+                <Plus className="w-4 h-4 mr-2" />
+                New Claim
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+              <div className="p-4 rounded-xl bg-card border">
+                <p className="text-sm text-muted-foreground">Total Claims</p>
+                <p className="text-xl sm:text-2xl font-bold">{myReimbursements.length}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-card border">
+                <p className="text-sm text-muted-foreground">Pending Approval</p>
+                <p className="text-xl sm:text-2xl font-bold">
+                  {myReimbursements.filter((r: any) => r.status === 'pending').length}
+                </p>
+              </div>
+              <div className="p-4 rounded-xl bg-card border">
+                <p className="text-sm text-muted-foreground">Total Amount</p>
+                <p className="text-xl sm:text-2xl font-bold">
+                  ₹{myReimbursements
+                    .filter((r: any) => r.status === 'approved')
+                    .reduce((sum: number, r: any) => sum + Number(r.amount), 0)
+                    .toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 mb-4">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-[150px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <DataTable
+              columns={employeeColumns}
+              data={statusFilter === 'all' ? myReimbursements : myReimbursements.filter((r: any) => r.status === statusFilter)}
+              keyExtractor={(reimburse) => reimburse.id}
+              emptyMessage="No reimbursement claims found"
+            />
+          </>
+        )}
 
         {/* Create Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

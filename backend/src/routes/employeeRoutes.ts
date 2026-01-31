@@ -8,6 +8,7 @@ const router = express.Router();
 
 router.get('/', authenticate, requireHR, asyncHandler(employeeController.getAllEmployees));
 router.get('/:id', authenticate, requireSelfOrHR('id'), asyncHandler(employeeController.getEmployeeById));
+router.post('/upload-avatar', authenticate, requireHR, employeeController.avatarUpload.single('avatar'), asyncHandler(employeeController.uploadAvatar));
 router.post('/', authenticate, requireHR, auditLog('employees', 'create'), asyncHandler(employeeController.createEmployee));
 router.put('/:id', authenticate, requireSelfOrHR('id'), auditLog('employees', 'update'), asyncHandler(employeeController.updateEmployee));
 router.post('/:id/terminate', authenticate, requireHR, auditLog('employees', 'terminate'), asyncHandler(employeeController.terminateEmployee));

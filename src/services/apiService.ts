@@ -26,6 +26,13 @@ export const employeeService = {
         api.get(`/employees/${id}`),
     create: (data: any) =>
         api.post('/employees', data),
+    uploadAvatar: (file: File) => {
+        const formData = new FormData();
+        formData.append('avatar', file);
+        return api.post('/employees/upload-avatar', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+    },
     update: (id: string, data: any) =>
         api.put(`/employees/${id}`, data),
     terminate: (id: string, data: any) =>
@@ -104,6 +111,18 @@ export const leaveLimitService = {
         api.get('/leave-limits'),
     update: (data: { casual_leave?: number; sick_leave?: number; earned_leave?: number }) =>
         api.put('/leave-limits', data),
+};
+
+// Leave Type Services
+export const leaveTypeService = {
+    getAll: () =>
+        api.get('/leave-types'),
+    create: (data: any) =>
+        api.post('/leave-types', data),
+    update: (id: string, data: any) =>
+        api.put(`/leave-types/${id}`, data),
+    delete: (id: string) =>
+        api.delete(`/leave-types/${id}`),
 };
 
 // Payroll Services
@@ -213,6 +232,12 @@ export const payrollService = {
     // Tax Calculation
     calculateTax: (params: any) =>
         api.get('/payroll-config/calculate-tax', { params }),
+
+    // Payroll Settings
+    getSettings: () =>
+        api.get('/payroll-config/settings'),
+    updateSettings: (data: any) =>
+        api.put('/payroll-config/settings', data),
 };
 
 // Reimbursement Services

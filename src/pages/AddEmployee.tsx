@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,13 +8,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { employeeService, departmentService, designationService } from '@/services/apiService';
 import { toast } from 'sonner';
 import { ChevronLeft, ChevronRight, User, Briefcase, CreditCard, FileText, Check, Upload, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import Loader from '@/components/ui/Loader';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { employeeDocumentService } from '@/services/apiService';
 
 const steps = [
     { id: 'personal', title: 'Personal Info', icon: User },
@@ -24,9 +26,13 @@ const steps = [
 ];
 
 export default function AddEmployee() {
+    const { id } = useParams();
+    const isEdit = !!id;
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [currentStep, setCurrentStep] = useState(0);
     const [formData, setFormData] = useState({
+        avatar_url: '',
         name: '',
         email: '',
         phone: '',
@@ -34,6 +40,7 @@ export default function AddEmployee() {
         address: '',
         date_of_joining: new Date().toISOString().split('T')[0],
         role: 'employee',
+        status: 'active',
         salary: '',
         department_id: '',
         designation_id: '',
@@ -42,25 +49,107 @@ export default function AddEmployee() {
         account_number: '',
         ifsc_code: '',
         branch_name: '',
-        password: 'password123',
+        password: 'emp123',
+        pf_percentage: '',
+        esi_percentage: '',
+        absent_deduction_type: 'percentage',
+        absent_deduction_value: '100',
     });
 
-    const [documents, setDocuments] = useState<{ type: string; file: File | null }[]>([
+    const [documents, setDocuments] = useState<{ type: string; file: File | null; url?: string }[]>([
         { type: 'ID Proof (Aadhaar/PAN)', file: null },
         { type: 'Education Certificate', file: null },
         { type: 'Relieving Letter', file: null },
     ]);
 
-    // Fetch Data
-    const { data: departments = [] } = useQuery({ queryKey: ['departments'], queryFn: async () => (await departmentService.getAll()).data });
-    const { data: designations = [] } = useQuery({ queryKey: ['designations'], queryFn: async () => (await designationService.getAll()).data });
+    // Fetch Departments and Designations
+    const { data: departmentsData = [] } = useQuery({ queryKey: ['departments'], queryFn: async () => (await departmentService.getAll()).data });
+    const departments = Array.isArray(departmentsData) ? departmentsData : (departmentsData as any).departments || [];
+
+    const { data: designationsData = [] } = useQuery({ queryKey: ['designations'], queryFn: async () => (await designationService.getAll()).data });
+    const designations = Array.isArray(designationsData) ? designationsData : (designationsData as any).designations || [];
+
     const { data: employeesData } = useQuery({ queryKey: ['employees-list'], queryFn: async () => (await employeeService.getAll()).data });
     const employees = employeesData?.employees || [];
 
+    // Fetch Employee for Editing
+    const { data: employeeToEdit, isLoading: isEmployeeLoading } = useQuery({
+        queryKey: ['employee', id],
+        queryFn: async () => (await employeeService.getById(id!)).data,
+        enabled: isEdit,
+    });
+
+    useEffect(() => {
+        if (employeeToEdit) {
+            setFormData({
+                avatar_url: employeeToEdit.avatar_url || '',
+                name: employeeToEdit.name || '',
+                email: employeeToEdit.email || '',
+                phone: employeeToEdit.phone || '',
+                date_of_birth: employeeToEdit.date_of_birth ? new Date(employeeToEdit.date_of_birth).toISOString().split('T')[0] : '',
+                address: employeeToEdit.address || '',
+                date_of_joining: employeeToEdit.date_of_joining ? new Date(employeeToEdit.date_of_joining).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                role: employeeToEdit.role || 'employee',
+                status: employeeToEdit.status || 'active',
+                salary: employeeToEdit.salary?.toString() || '',
+                department_id: employeeToEdit.department_id || '',
+                designation_id: employeeToEdit.designation_id || '',
+                reporting_manager_id: employeeToEdit.reporting_manager_id || '',
+                bank_name: employeeToEdit.bank_name || '',
+                account_number: employeeToEdit.account_number || '',
+                ifsc_code: employeeToEdit.ifsc_code || '',
+                branch_name: employeeToEdit.branch_name || '',
+                password: '', // Don't prepopulate password for security
+                pf_percentage: employeeToEdit.pf_percentage || '',
+                esi_percentage: employeeToEdit.esi_percentage || '',
+                absent_deduction_type: employeeToEdit.absent_deduction_type || 'percentage',
+                absent_deduction_value: employeeToEdit.absent_deduction_value || '',
+            });
+
+            if (employeeToEdit.documents && Array.isArray(employeeToEdit.documents)) {
+                // Initialize with placeholders but fill in those that exist
+                const existingDocs = [...documents];
+                employeeToEdit.documents.forEach((doc: any) => {
+                    const idx = existingDocs.findIndex(d => d.type === doc.document_type);
+                    if (idx !== -1) {
+                        existingDocs[idx] = { ...existingDocs[idx], url: doc.file_url };
+                    }
+                });
+                setDocuments(existingDocs);
+            }
+        }
+    }, [employeeToEdit]);
+
+    const uploadAvatarMutation = useMutation({
+        mutationFn: employeeService.uploadAvatar,
+        onSuccess: (res) => {
+            updateFormData('avatar_url', res.data.url);
+            toast.success('Profile image uploaded');
+        },
+        onError: () => toast.error('Failed to upload image'),
+    });
+
+    const uploadDocuments = async (employeeId: string) => {
+        const uploadPromises = documents
+            .filter(doc => doc.file)
+            .map(doc => {
+                return (employeeDocumentService.uploadDocument(employeeId, doc.file!, doc.type)).catch(err => {
+                    console.error('Failed to upload document:', doc.type, err);
+                    toast.error(`Failed to upload ${doc.type}`);
+                });
+            });
+        if (uploadPromises.length > 0) {
+            await Promise.all(uploadPromises);
+        }
+    };
+
     const createMutation = useMutation({
         mutationFn: employeeService.create,
-        onSuccess: () => {
-            toast.success('Employee onboarded successfully!');
+        onSuccess: async (res) => {
+            const empId = res.data.employee.id;
+            await uploadDocuments(empId);
+            toast.success('Employee created successfully!');
+            queryClient.invalidateQueries({ queryKey: ['employees'] });
             navigate('/employees');
         },
         onError: (error: any) => {
@@ -68,11 +157,33 @@ export default function AddEmployee() {
         },
     });
 
+    const updateMutation = useMutation({
+        mutationFn: (data: any) => employeeService.update(id!, data),
+        onSuccess: async (res) => {
+            const empId = res.data.employee.id || id;
+            await uploadDocuments(empId);
+            toast.success('Employee updated successfully!');
+            queryClient.invalidateQueries({ queryKey: ['employees'] });
+            queryClient.invalidateQueries({ queryKey: ['employee', id] });
+            navigate('/employees');
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Failed to update employee');
+        },
+    });
+
     const handleNext = () => {
         if (currentStep < steps.length - 1) {
             setCurrentStep(prev => prev + 1);
         } else {
-            createMutation.mutate(formData);
+            const payload = { ...formData };
+            if (isEdit && !payload.password) delete payload.password;
+
+            if (isEdit) {
+                updateMutation.mutate(payload);
+            } else {
+                createMutation.mutate(payload);
+            }
         }
     };
 
@@ -85,12 +196,22 @@ export default function AddEmployee() {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
+    if (isEdit && isEmployeeLoading) {
+        return (
+            <MainLayout>
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <Loader />
+                </div>
+            </MainLayout>
+        );
+    }
+
     return (
         <MainLayout>
             <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-10">
                 <PageHeader
-                    title="Onboard New Employee"
-                    description="Complete the steps below to add a new member to your team."
+                    title={isEdit ? "Edit Employee" : "Add New Employee"}
+                    description={isEdit ? "Update details for this team member." : "Complete the steps below to add a new member to your team."}
                 >
                     <Button variant="outline" onClick={() => navigate('/employees')}>
                         <ChevronLeft className="w-4 h-4 mr-2" /> Cancel
@@ -144,26 +265,55 @@ export default function AddEmployee() {
                                 className="space-y-6"
                             >
                                 {currentStep === 0 && (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                        <div className="space-y-2">
-                                            <Label>Full Name*</Label>
-                                            <Input value={formData.name} onChange={e => updateFormData('name', e.target.value)} placeholder="John Doe" required />
+                                    <div className="space-y-6">
+                                        <div className="flex flex-col items-center gap-4 mb-4">
+                                            <div className="relative group">
+                                                <Avatar className="h-24 w-24 border-4 border-primary/10 shadow-xl">
+                                                    <AvatarImage src={formData.avatar_url} />
+                                                    <AvatarFallback className="text-2xl bg-primary/5 text-primary">
+                                                        {formData.name?.charAt(0) || <User className="w-10 h-10" />}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                                                    <Upload className="w-6 h-6" />
+                                                    <input
+                                                        type="file"
+                                                        className="hidden"
+                                                        accept="image/*"
+                                                        onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) uploadAvatarMutation.mutate(file);
+                                                        }}
+                                                    />
+                                                </label>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-sm font-medium">Profile Picture</p>
+                                                <p className="text-xs text-muted-foreground">Click to upload (JPG, PNG)</p>
+                                            </div>
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label>Email Address*</Label>
-                                            <Input type="email" value={formData.email} onChange={e => updateFormData('email', e.target.value)} placeholder="john@company.com" required />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Phone Number*</Label>
-                                            <Input value={formData.phone} onChange={e => updateFormData('phone', e.target.value)} placeholder="+1 234 567 890" required />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Date of Birth</Label>
-                                            <Input type="date" value={formData.date_of_birth} onChange={e => updateFormData('date_of_birth', e.target.value)} />
-                                        </div>
-                                        <div className="space-y-2 sm:col-span-2">
-                                            <Label>Residential Address*</Label>
-                                            <Textarea value={formData.address} onChange={e => updateFormData('address', e.target.value)} placeholder="Enter full address" rows={3} required />
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <Label>Full Name*</Label>
+                                                <Input value={formData.name} onChange={e => updateFormData('name', e.target.value)} placeholder="John Doe" required />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Email Address*</Label>
+                                                <Input type="email" value={formData.email} onChange={e => updateFormData('email', e.target.value)} placeholder="john@company.com" required />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Phone Number*</Label>
+                                                <Input value={formData.phone} onChange={e => updateFormData('phone', e.target.value)} placeholder="+1 234 567 890" required />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Date of Birth</Label>
+                                                <Input type="date" value={formData.date_of_birth} onChange={e => updateFormData('date_of_birth', e.target.value)} />
+                                            </div>
+                                            <div className="space-y-2 sm:col-span-2">
+                                                <Label>Residential Address*</Label>
+                                                <Textarea value={formData.address} onChange={e => updateFormData('address', e.target.value)} placeholder="Enter full address" rows={3} required />
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -210,6 +360,40 @@ export default function AddEmployee() {
                                                 </SelectContent>
                                             </Select>
                                         </div>
+                                        <div className="space-y-2">
+                                            <Label>Status*</Label>
+                                            <Select value={formData.status} onValueChange={val => updateFormData('status', val)}>
+                                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="active">Active</SelectItem>
+                                                    <SelectItem value="inactive">Inactive</SelectItem>
+                                                    <SelectItem value="on_leave">On Leave</SelectItem>
+                                                    <SelectItem value="terminated">Terminated</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>PF Percentage (%)</Label>
+                                            <Input type="number" step="0.01" value={formData.pf_percentage} onChange={e => updateFormData('pf_percentage', e.target.value)} placeholder="Default 12%" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>ESI Percentage (%)</Label>
+                                            <Input type="number" step="0.01" value={formData.esi_percentage} onChange={e => updateFormData('esi_percentage', e.target.value)} placeholder="Default 0.75%" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Absent Deduction Type</Label>
+                                            <Select value={formData.absent_deduction_type} onValueChange={val => updateFormData('absent_deduction_type', val)}>
+                                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="percentage">Percentage (of monthly pay)</SelectItem>
+                                                    <SelectItem value="amount">Fixed Amount</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Absent Deduction Value</Label>
+                                            <Input type="number" value={formData.absent_deduction_value} onChange={e => updateFormData('absent_deduction_value', e.target.value)} placeholder="e.g. 100 or 500" />
+                                        </div>
                                     </div>
                                 )}
 
@@ -246,16 +430,31 @@ export default function AddEmployee() {
                                                         </div>
                                                         <div>
                                                             <p className="text-sm font-medium">{doc.type}</p>
-                                                            <p className="text-xs text-muted-foreground">{doc.file ? doc.file.name : 'No file chosen'}</p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {doc.file ? doc.file.name : doc.url ? 'File uploaded' : 'No file chosen'}
+                                                            </p>
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        {doc.file ? (
-                                                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => {
-                                                                const newDocs = [...documents];
-                                                                newDocs[idx].file = null;
-                                                                setDocuments(newDocs);
-                                                            }}><Trash2 className="w-4 h-4" /></Button>
+                                                        {(doc.file || doc.url) ? (
+                                                            <>
+                                                                {doc.url && (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="text-primary hover:text-primary/80"
+                                                                        onClick={() => window.open(doc.url, '_blank')}
+                                                                    >
+                                                                        View
+                                                                    </Button>
+                                                                )}
+                                                                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => {
+                                                                    const newDocs = [...documents];
+                                                                    newDocs[idx].file = null;
+                                                                    newDocs[idx].url = undefined;
+                                                                    setDocuments(newDocs);
+                                                                }}><Trash2 className="w-4 h-4" /></Button>
+                                                            </>
                                                         ) : (
                                                             <Button variant="outline" size="sm" className="relative cursor-pointer group-hover:bg-primary group-hover:text-primary-foreground">
                                                                 <Upload className="w-3 h-3 mr-2" /> Upload
@@ -284,11 +483,11 @@ export default function AddEmployee() {
                             </Button>
                             <Button
                                 onClick={handleNext}
-                                disabled={createMutation.isPending || (currentStep === 0 && (!formData.name || !formData.email || !formData.phone || !formData.address))}
+                                disabled={createMutation.isPending || updateMutation.isPending || uploadAvatarMutation.isPending || (currentStep === 0 && (!formData.name || !formData.email || !formData.phone || !formData.address))}
                                 className="min-w-[120px]"
                             >
-                                {createMutation.isPending && <Loader size="small" variant="white" className="mr-2" />}
-                                {currentStep === steps.length - 1 ? 'Complete Onboarding' : <>Next <ChevronRight className="w-4 h-4 ml-2" /></>}
+                                {(createMutation.isPending || updateMutation.isPending) && <Loader size="small" variant="white" className="mr-2" />}
+                                {currentStep === steps.length - 1 ? (isEdit ? 'Update Employee' : 'Create Employee') : <>Next <ChevronRight className="w-4 h-4 ml-2" /></>}
                             </Button>
                         </div>
                     </CardContent>

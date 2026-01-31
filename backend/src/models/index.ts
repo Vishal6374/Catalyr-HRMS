@@ -18,6 +18,9 @@ import Resignation from './Resignation';
 import RegularizationRequest from './RegularizationRequest';
 import TaskLog from './TaskLog';
 import Meeting from './Meeting';
+import LeaveType from './LeaveType';
+import PayrollSettings from './PayrollSettings';
+import SystemSettings from './SystemSettings';
 
 // Temporarily disabled to debug server crash
 // import SalaryStructure from './SalaryStructure';
@@ -135,6 +138,9 @@ export {
     RegularizationRequest,
     TaskLog,
     Meeting,
+    LeaveType,
+    PayrollSettings,
+    SystemSettings,
 };
 
 export default {
@@ -158,4 +164,7 @@ export default {
     RegularizationRequest,
     TaskLog,
     Meeting,
+    LeaveType,
+    PayrollSettings,
+    SystemSettings,
 };

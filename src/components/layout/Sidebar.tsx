@@ -1,10 +1,12 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSidebar } from '@/contexts/SidebarContext';
-import { LayoutDashboard, Users, Building2, Briefcase, CalendarCheck, Wallet, CalendarDays, Receipt, MessageSquareWarning, FileText, CalendarRange, User, LogOut, ChevronLeft, ChevronRight, ClipboardList, Video, UserMinus } from 'lucide-react';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
+import { LayoutDashboard, Users, Building2, Briefcase, CalendarCheck, Wallet, CalendarDays, Receipt, MessageSquareWarning, FileText, CalendarRange, User, LogOut, ChevronLeft, ChevronRight, ClipboardList, Video, UserMinus, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { BRANDING } from '@/config/branding';
 
 const navItems = [
   { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -20,15 +22,25 @@ const navItems = [
   { title: 'Complaints', href: '/complaints', icon: MessageSquareWarning },
   { title: 'Policies', href: '/policies', icon: FileText },
   { title: 'Holidays', href: '/holidays', icon: CalendarRange },
-  { title: 'Exit Management', href: '/resignations', icon: UserMinus, hrOnly: true },
+  { title: 'Resignations', href: '/resignations', icon: UserMinus, hrOnly: true },
   { title: 'Profile', href: '/profile', icon: User },
+  { title: 'Customization', href: '/system-customization', icon: Settings, adminOnly: true },
 ];
 
 export function Sidebar() {
-  const { user, logout, isHR } = useAuth();
+  const { user, logout, isHR, isAdmin } = useAuth();
   const { isCollapsed, setIsCollapsed } = useSidebar();
+  const { settings } = useSystemSettings();
   const location = useLocation();
-  const filteredNavItems = navItems.filter((item) => !item.hrOnly || isHR);
+
+  const filteredNavItems = navItems.filter((item) => {
+    if (item.adminOnly) return isAdmin;
+    if (item.hrOnly) return isHR;
+    return true;
+  });
+
+  const appName = settings?.company_name || BRANDING.name;
+  const appLogo = settings?.sidebar_logo_url || settings?.company_logo_url || BRANDING.logo;
 
   return (
     <aside className={cn(
@@ -41,15 +53,15 @@ export function Sidebar() {
           isCollapsed ? "justify-center" : "ml-2"
         )}>
           <img
-            src="/favicon.png"
-            alt="Catalyr Logo"
+            src={appLogo}
+            alt={`${appName} Logo`}
             className={cn("w-8 h-8 object-contain", isCollapsed && "cursor-pointer")}
             onClick={isCollapsed ? () => setIsCollapsed(!isCollapsed) : undefined}
           />
           <span className={cn(
             "font-bold text-primary-foreground text-xl transition-all duration-300",
             isCollapsed && "hidden"
-          )}>Catalyr HRMS</span>
+          )}>{appName}</span>
         </div>
         <Button
           variant="ghost"

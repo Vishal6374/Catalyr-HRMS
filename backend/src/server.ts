@@ -9,8 +9,8 @@ const startServer = async () => {
         // Test database connection
         await testConnection();
 
-        // Sync database with alter mode (updates tables safely without data loss)
-        await syncDatabase(false, true); // force=false, alter=true
+        // Sync database in safe mode (creates missing tables)
+        await syncDatabase(false, false); // force=false, alter=false
         console.log('✅ Database sync completed successfully');
 
         // Initialize auto-absent scheduler

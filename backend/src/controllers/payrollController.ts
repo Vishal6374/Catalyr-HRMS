@@ -7,7 +7,9 @@ import User from '../models/User';
 import AttendanceLog from '../models/AttendanceLog';
 import Reimbursement from '../models/Reimbursement';
 import { AppError } from '../middleware/errorHandler';
-import { getDaysInMonth } from '../utils/helpers';
+import PayrollSettings from '../models/PayrollSettings';
+import { logAudit } from '../utils/auditLogger';
+
 
 export const getPayrollBatches = async (_req: AuthRequest, res: Response): Promise<void> => {
     const batches = await PayrollBatch.findAll({
@@ -38,7 +40,11 @@ export const getSalarySlips = async (req: AuthRequest, res: Response): Promise<v
     const slips = await SalarySlip.findAll({
         where,
         include: [
-            { association: 'employee', attributes: ['id', 'name', 'email', 'employee_id'] },
+            {
+                association: 'employee',
+                attributes: ['id', 'name', 'email', 'employee_id'],
+                where: req.user?.role === 'hr' ? { role: { [Op.ne]: 'admin' } } : undefined
+            },
             { association: 'batch' },
         ],
         order: [['year', 'DESC'], ['month', 'DESC']],
@@ -74,13 +80,24 @@ export const generatePayroll = async (req: AuthRequest, res: Response): Promise<
     });
 
     // Get all active employees
+    const whereUsers: any = { status: 'active' };
+    if (req.user?.role === 'hr') {
+        whereUsers.role = { [Op.ne]: 'admin' };
+    }
+
     const employees = await User.findAll({
-        where: { status: 'active' },
+        where: whereUsers,
     });
+
+    // Get payroll settings for defaults
+    const payrollSettings = await PayrollSettings.findOne();
+    const defaultPF = payrollSettings?.default_pf_percentage || 12;
+    const defaultESI = payrollSettings?.default_esi_percentage || 0.75;
+    const defaultAbsentType = payrollSettings?.default_absent_deduction_type || 'percentage';
+    const defaultAbsentValue = payrollSettings?.default_absent_deduction_value || 3.33;
 
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
-    const totalDays = getDaysInMonth(year, month);
 
     const salarySlips = [];
     let totalAmount = 0;
@@ -99,7 +116,6 @@ export const generatePayroll = async (req: AuthRequest, res: Response): Promise<
         const absentDays = attendance.filter(a => a.status === 'absent').length;
 
         // Calculate salary components
-        const dailySalary = employee.salary / totalDays;
         const basicSalary = employee.salary * 0.5;
         const hra = employee.salary * 0.3;
         const da = employee.salary * 0.2;
@@ -116,12 +132,25 @@ export const generatePayroll = async (req: AuthRequest, res: Response): Promise<
         const totalReimbursements = reimbursements.reduce((sum, r) => sum + Number(r.amount), 0);
 
         // Calculate deductions
-        const lossOfPay = (absentDays + halfDays * 0.5) * dailySalary;
-        const pf = basicSalary * 0.12;
+        const totalAbsentEquivalent = absentDays + (halfDays * 0.5);
+        let lossOfPay = 0;
+
+        const absentDeductionType = employee.absent_deduction_type || defaultAbsentType;
+        const absentDeductionValue = employee.absent_deduction_value || defaultAbsentValue;
+
+        if (absentDeductionType === 'amount') {
+            lossOfPay = totalAbsentEquivalent * absentDeductionValue;
+        } else {
+            const totalDaysInMonth = endDate.getDate();
+            lossOfPay = totalAbsentEquivalent * (employee.salary / totalDaysInMonth) * (absentDeductionValue / 100);
+        }
+
+        const pf = basicSalary * ((employee.pf_percentage || defaultPF) / 100);
+        const esi = employee.salary * ((employee.esi_percentage || defaultESI) / 100);
         const tax = employee.salary > 50000 ? employee.salary * 0.1 : 0;
 
         const grossSalary = employee.salary + totalReimbursements;
-        const totalDeductions = pf + tax + lossOfPay;
+        const totalDeductions = pf + esi + tax + lossOfPay;
         const netSalary = grossSalary - totalDeductions;
 
         // Create salary slip
@@ -137,6 +166,7 @@ export const generatePayroll = async (req: AuthRequest, res: Response): Promise<
             deductions: {
                 pf,
                 tax,
+                esi,
                 loss_of_pay: lossOfPay,
                 other: 0,
             },
@@ -163,11 +193,23 @@ export const generatePayroll = async (req: AuthRequest, res: Response): Promise<
     batch.processed_at = new Date();
     await batch.save();
 
+    await logAudit({
+        action: 'GENERATE',
+        module: 'PAYROLL',
+        entity_type: 'PAYROLL_BATCH',
+        entity_id: batch.id,
+        performed_by: req.user!.id,
+        new_value: batch.toJSON(),
+        ip_address: req.ip,
+        user_agent: req.get('user-agent'),
+    });
+
     res.json({
         message: 'Payroll generated successfully',
         batch,
         salarySlips,
     });
+
 };
 
 export const markPayrollPaid = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -216,7 +258,18 @@ export const markPayrollPaid = async (req: AuthRequest, res: Response): Promise<
         message: 'Payroll marked as paid and attendance locked',
         batch,
     });
-};
+
+    await logAudit({
+        action: 'MARK_PAID',
+        module: 'PAYROLL',
+        entity_type: 'PAYROLL_BATCH',
+        entity_id: batch.id,
+        performed_by: req.user!.id,
+        new_value: batch.toJSON(),
+        ip_address: req.ip,
+        user_agent: req.get('user-agent'),
+    });
+}
 
 export const getPayrollStats = async (req: AuthRequest, res: Response): Promise<void> => {
     if (req.user?.role !== 'hr') {
@@ -281,7 +334,20 @@ export const updateSalarySlip = async (req: AuthRequest, res: Response): Promise
     const totalDeductions = Number(slip.deductions.pf || 0) + Number(slip.deductions.tax || 0) + Number(slip.deductions.loss_of_pay || 0) + Number(slip.deductions.other || 0);
     slip.net_salary = slip.gross_salary - totalDeductions;
 
+    const oldValues = slip.toJSON();
     await slip.save();
+
+    await logAudit({
+        action: 'UPDATE_SLIP',
+        module: 'PAYROLL',
+        entity_type: 'SALARY_SLIP',
+        entity_id: slip.id,
+        performed_by: req.user!.id,
+        old_value: oldValues,
+        new_value: slip.toJSON(),
+        ip_address: req.ip,
+        user_agent: req.get('user-agent'),
+    });
 
     res.json(slip);
 };
@@ -349,4 +415,250 @@ export const createSalarySlip = async (req: AuthRequest, res: Response): Promise
     await batch.increment('total_amount', { by: netSalary });
 
     res.status(201).json(slip);
+};
+
+// ==========================================
+// UNIFIED PAYROLL HELPERS & CONTROLLERS
+// ==========================================
+
+const round = (value: number) => Math.round(value);
+
+const calculatePayrollComponents = async (employee: any, month: number, year: number, bonus: number = 0, otherDeduction: number = 0, settings: any) => {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+    const totalDaysInMonth = endDate.getDate();
+
+    // Get attendance
+    const attendance = await AttendanceLog.findAll({
+        where: {
+            employee_id: employee.id,
+            date: { [Op.between]: [startDate, endDate] },
+        },
+    });
+
+    const presentDays = attendance.filter(a => a.status === 'present').length;
+    const halfDays = attendance.filter(a => a.status === 'half_day').length;
+    const absentDaysCount = attendance.filter(a => a.status === 'absent').length;
+
+    // Basic = 50% of Salary, HRA = 30%, DA = 20%
+    const basicSalary = round(employee.salary * 0.5);
+    const hra = round(employee.salary * 0.3);
+    const da = round(employee.salary * 0.2);
+
+    // Get approved reimbursements (not yet processed)
+    const reimbursements = await Reimbursement.findAll({
+        where: {
+            employee_id: employee.id,
+            status: 'approved',
+            payroll_batch_id: null as any,
+        },
+    });
+    const totalReimbursements = round(reimbursements.reduce((sum, r) => sum + Number(r.amount), 0));
+
+    // Calculate deductions
+    const totalAbsentEquivalent = absentDaysCount + (halfDays * 0.5);
+    let lossOfPay = 0;
+
+    const defaultAbsentType = settings?.default_absent_deduction_type || 'percentage';
+    const defaultAbsentValue = settings?.default_absent_deduction_value || 3.33;
+
+    const absentDeductionType = employee.absent_deduction_type || defaultAbsentType;
+    const absentDeductionValue = employee.absent_deduction_value || defaultAbsentValue;
+
+    if (absentDeductionType === 'amount') {
+        lossOfPay = round(totalAbsentEquivalent * absentDeductionValue);
+    } else {
+        lossOfPay = round(totalAbsentEquivalent * (employee.salary / totalDaysInMonth) * (absentDeductionValue / 100));
+    }
+
+    const defaultPF = settings?.default_pf_percentage || 12;
+    const defaultESI = settings?.default_esi_percentage || 0.75;
+
+    const pf = round(basicSalary * ((employee.pf_percentage || defaultPF) / 100));
+    const esi = round(employee.salary * ((employee.esi_percentage || defaultESI) / 100));
+    const tax = round(employee.salary > 50000 ? employee.salary * 0.1 : 0);
+
+    const grossSalary = basicSalary + hra + da + totalReimbursements + bonus;
+    const totalDeductions = pf + esi + tax + lossOfPay + otherDeduction;
+    const netSalary = grossSalary - totalDeductions;
+
+    return {
+        basic_salary: basicSalary,
+        hra,
+        da,
+        reimbursements: totalReimbursements,
+        bonus,
+        deductions: {
+            pf,
+            esi,
+            tax,
+            loss_of_pay: lossOfPay,
+            other: otherDeduction
+        },
+        gross_salary: grossSalary,
+        net_salary: netSalary,
+        attendance_summary: {
+            total_days: totalDaysInMonth,
+            present_days: presentDays + (halfDays * 0.5),
+            absent_days: totalAbsentEquivalent
+        },
+        reimbursementRecords: reimbursements
+    };
+};
+
+export const previewPayroll = async (req: AuthRequest, res: Response): Promise<void> => {
+    const { month, year, employee_ids } = req.body;
+
+    if (!employee_ids || !Array.isArray(employee_ids) || employee_ids.length === 0) {
+        throw new AppError(400, 'Please select at least one employee');
+    }
+
+    const payrollSettings = await PayrollSettings.findOne();
+    const where: any = { id: { [Op.in]: employee_ids } };
+    if (req.user?.role === 'hr') {
+        where.role = { [Op.ne]: 'admin' };
+    }
+
+    const employees = await User.findAll({
+        where,
+        include: [{ association: 'department' }]
+    });
+
+    const previewData = [];
+
+    for (const employee of employees) {
+        const calc = await calculatePayrollComponents(employee, month, year, 0, 0, payrollSettings);
+
+        previewData.push({
+            employee_id: employee.id,
+            employee_name: employee.name,
+            employee_code: employee.employee_id,
+            role: employee.role,
+            department: employee.department,
+            basic_salary: calc.basic_salary,
+            net_salary: calc.net_salary,
+            bonus: calc.bonus,
+            lop: calc.deductions.loss_of_pay,
+            pf: calc.deductions.pf,
+            esi: calc.deductions.esi,
+            tax: calc.deductions.tax,
+            other_deductions: calc.deductions.other,
+            present_days: calc.attendance_summary.present_days,
+            absent_days: calc.attendance_summary.absent_days,
+            total_days: calc.attendance_summary.total_days
+        });
+    }
+
+    res.json({ data: previewData });
+};
+
+export const processPayroll = async (req: AuthRequest, res: Response): Promise<void> => {
+    const { month, year, employee_ids, bonuses = {}, deductions = {} } = req.body;
+
+    if (!employee_ids || !Array.isArray(employee_ids) || employee_ids.length === 0) {
+        throw new AppError(400, 'Please select at least one employee');
+    }
+
+    let batch = await PayrollBatch.findOne({ where: { month, year } });
+
+    if (batch && batch.status === 'paid') {
+        throw new AppError(400, 'Payroll for this month has already been paid and locked.');
+    }
+
+    if (!batch) {
+        batch = await PayrollBatch.create({
+            month,
+            year,
+            status: 'processed',
+            total_employees: 0,
+            total_amount: 0,
+            processed_by: req.user!.id,
+            processed_at: new Date()
+        });
+    } else {
+        batch.status = 'processed';
+        batch.processed_at = new Date();
+        batch.processed_by = req.user!.id;
+        await batch.save();
+    }
+
+    const payrollSettings = await PayrollSettings.findOne();
+    const whereUsers: any = { id: { [Op.in]: employee_ids } };
+    if (req.user?.role === 'hr') {
+        whereUsers.role = { [Op.ne]: 'admin' };
+    }
+
+    const employees = await User.findAll({
+        where: whereUsers
+    });
+
+    let batchTotalAmount = 0;
+
+    for (const employee of employees) {
+        const bonus = Number(bonuses[employee.id]) || 0;
+        const otherDeduction = Number(deductions[employee.id]) || 0;
+
+        const calc = await calculatePayrollComponents(employee, month, year, bonus, otherDeduction, payrollSettings);
+
+        let slip = await SalarySlip.findOne({
+            where: { batch_id: batch.id, employee_id: employee.id }
+        });
+
+        if (slip) {
+            slip.basic_salary = calc.basic_salary;
+            slip.hra = calc.hra;
+            slip.da = calc.da;
+            slip.reimbursements = calc.reimbursements;
+            slip.deductions = calc.deductions;
+            slip.gross_salary = calc.gross_salary;
+            slip.net_salary = calc.net_salary;
+            slip.status = 'draft';
+            await slip.save();
+        } else {
+            slip = await SalarySlip.create({
+                employee_id: employee.id,
+                batch_id: batch.id,
+                month,
+                year,
+                basic_salary: calc.basic_salary,
+                hra: calc.hra,
+                da: calc.da,
+                reimbursements: calc.reimbursements,
+                deductions: calc.deductions,
+                gross_salary: calc.gross_salary,
+                net_salary: calc.net_salary,
+                status: 'draft',
+                generated_at: new Date()
+            });
+        }
+        batchTotalAmount += calc.net_salary;
+
+        if (calc.reimbursementRecords.length > 0) {
+            await Reimbursement.update(
+                { payroll_batch_id: batch.id, status: 'paid' },
+                { where: { id: calc.reimbursementRecords.map(r => r.id) } }
+            );
+        }
+    }
+
+    const allSlipsInBatch = await SalarySlip.findAll({ where: { batch_id: batch.id } });
+    batch.total_employees = allSlipsInBatch.length;
+    batch.total_amount = allSlipsInBatch.reduce((sum, s) => sum + Number(s.net_salary), 0);
+    await batch.save();
+
+    await logAudit({
+        action: 'PROCESS_PAYROLL',
+        module: 'PAYROLL',
+        entity_type: 'PAYROLL_BATCH',
+        entity_id: batch.id,
+        performed_by: req.user!.id,
+        new_value: { month, year, count: employees.length },
+        ip_address: req.ip,
+        user_agent: req.get('user-agent'),
+    });
+
+    res.json({
+        message: 'Payroll processed successfully',
+        batch_id: batch.id
+    });
 };

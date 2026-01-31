@@ -10,6 +10,7 @@ import FFSettlement from '../models/FFSettlement';
 import PayrollAudit from '../models/PayrollAudit';
 import SalarySlip from '../models/SalarySlip';
 import User from '../models/User';
+import PayrollSettings from '../models/PayrollSettings';
 import { AppError } from '../middleware/errorHandler';
 
 // ============ SALARY STRUCTURE CONTROLLERS ============
@@ -641,4 +642,48 @@ export const calculateTax = async (req: AuthRequest, res: Response): Promise<voi
         calculated_tax: calculatedTax,
         tax_slabs: taxSlab?.slabs || [],
     });
+};
+
+// ============ PAYROLL SETTINGS CONTROLLERS ============
+export const getPayrollSettings = async (_req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        let settings = await PayrollSettings.findOne();
+
+        if (!settings) {
+            settings = await PayrollSettings.create({
+                default_pf_percentage: 12.00,
+                default_esi_percentage: 0.75,
+                default_absent_deduction_type: 'percentage',
+                default_absent_deduction_value: 3.33,
+            });
+        }
+
+        res.json(settings);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Failed to fetch payroll settings', error: error.message });
+    }
+};
+
+export const updatePayrollSettings = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        if (req.user?.role !== 'hr' && req.user?.role !== 'admin') {
+            throw new AppError(403, 'Permission denied');
+        }
+
+        const updates = req.body;
+        let settings = await PayrollSettings.findOne();
+
+        if (!settings) {
+            settings = await PayrollSettings.create(updates);
+        } else {
+            await settings.update(updates);
+        }
+
+        res.json({
+            message: 'Payroll settings updated successfully',
+            settings,
+        });
+    } catch (error: any) {
+        res.status(error.statusCode || 500).json({ message: error.message || 'Failed to update payroll settings' });
+    }
 };

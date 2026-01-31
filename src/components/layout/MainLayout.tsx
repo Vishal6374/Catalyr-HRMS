@@ -4,6 +4,8 @@ import { MobileSidebar } from './MobileSidebar';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { BRANDING } from '@/config/branding';
+
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -26,8 +28,8 @@ export function MainLayout({ children }: MainLayoutProps) {
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-30 h-16 bg-primary border-b border-primary/20 flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
-          <img src="/favicon.png" alt="Catalyr Logo" className="w-8 h-8 object-contain" />
-          <span className="font-bold text-primary-foreground text-xl">Catalyr HRMS</span>
+          <img src={BRANDING.logo} alt={`${BRANDING.name} Logo`} className="w-8 h-8 object-contain" />
+          <span className="font-bold text-primary-foreground text-xl">{BRANDING.name}</span>
         </div>
         <Button
           variant="ghost"

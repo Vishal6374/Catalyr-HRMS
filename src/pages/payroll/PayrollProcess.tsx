@@ -220,13 +220,28 @@ export default function PayrollProcess() {
             cell: (item) => <span className="text-success">+₹{Number(bonuses[item.employee_id] || 0).toLocaleString('en-IN')}</span>,
         },
         {
+            key: 'pf',
+            header: 'PF',
+            cell: (item) => <span className="text-destructive">-₹{Number(item.pf || 0).toLocaleString('en-IN')}</span>,
+        },
+        {
+            key: 'esi',
+            header: 'ESI',
+            cell: (item) => <span className="text-destructive">-₹{Number(item.esi || 0).toLocaleString('en-IN')}</span>,
+        },
+        // {
+        //     key: 'tax',
+        //     header: 'Tax',
+        //     cell: (item) => <span className="text-destructive">-₹{Number(item.tax || 0).toLocaleString('en-IN')}</span>,
+        // },
+        {
             key: 'lop',
             header: 'LOP',
             cell: (item) => <span className="text-destructive">-₹{Number(item.lop).toLocaleString('en-IN')}</span>,
         },
         {
             key: 'other_deductions',
-            header: 'Deductions',
+            header: 'Other',
             cell: (item) => <span className="text-destructive">-₹{Number(deductions[item.employee_id] || 0).toLocaleString('en-IN')}</span>,
         },
         {

@@ -4,7 +4,7 @@ import { sequelize } from '../config/database';
 export interface LeaveBalanceAttributes {
     id: string;
     employee_id: string;
-    leave_type: 'casual' | 'sick' | 'earned' | 'unpaid';
+    leave_type: string;
     total: number;
     used: number;
     remaining: number;
@@ -18,7 +18,7 @@ export interface LeaveBalanceCreationAttributes extends Optional<LeaveBalanceAtt
 class LeaveBalance extends Model<LeaveBalanceAttributes, LeaveBalanceCreationAttributes> implements LeaveBalanceAttributes {
     public id!: string;
     public employee_id!: string;
-    public leave_type!: 'casual' | 'sick' | 'earned' | 'unpaid';
+    public leave_type!: string;
     public total!: number;
     public used!: number;
     public remaining!: number;
@@ -40,7 +40,7 @@ LeaveBalance.init(
             allowNull: false,
         },
         leave_type: {
-            type: DataTypes.ENUM('casual', 'sick', 'earned', 'unpaid'),
+            type: DataTypes.STRING,
             allowNull: false,
         },
         total: {

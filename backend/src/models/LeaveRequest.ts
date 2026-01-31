@@ -4,7 +4,7 @@ import { sequelize } from '../config/database';
 export interface LeaveRequestAttributes {
     id: string;
     employee_id: string;
-    leave_type: 'casual' | 'sick' | 'earned' | 'unpaid';
+    leave_type: string;
     start_date: Date;
     end_date: Date;
     days: number;
@@ -22,7 +22,7 @@ export interface LeaveRequestCreationAttributes extends Optional<LeaveRequestAtt
 class LeaveRequest extends Model<LeaveRequestAttributes, LeaveRequestCreationAttributes> implements LeaveRequestAttributes {
     public id!: string;
     public employee_id!: string;
-    public leave_type!: 'casual' | 'sick' | 'earned' | 'unpaid';
+    public leave_type!: string;
     public start_date!: Date;
     public end_date!: Date;
     public days!: number;
@@ -48,7 +48,7 @@ LeaveRequest.init(
             allowNull: false,
         },
         leave_type: {
-            type: DataTypes.ENUM('casual', 'sick', 'earned', 'unpaid'),
+            type: DataTypes.STRING,
             allowNull: false,
         },
         start_date: {

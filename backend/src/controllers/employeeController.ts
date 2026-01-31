@@ -5,6 +5,9 @@ import User from '../models/User';
 import LeaveBalance from '../models/LeaveBalance';
 import { generateEmployeeId } from '../utils/helpers';
 import { AppError } from '../middleware/errorHandler';
+import { logAudit } from '../utils/auditLogger';
+import { upload, getFileUrl } from '../utils/fileUpload';
+
 
 export const getAllEmployees = async (req: AuthRequest, res: Response): Promise<void> => {
     const { search, department_id, status, page = 1, limit = 50 } = req.query;
@@ -25,6 +28,11 @@ export const getAllEmployees = async (req: AuthRequest, res: Response): Promise<
 
     if (status) {
         where.status = status;
+    }
+
+    // Hide admins from HR users
+    if (req.user?.role === 'hr') {
+        where.role = { [Op.ne]: 'admin' };
     }
 
     const offset = (Number(page) - 1) * Number(limit);
@@ -49,6 +57,16 @@ export const getAllEmployees = async (req: AuthRequest, res: Response): Promise<
     });
 };
 
+export const avatarUpload = upload;
+
+export const uploadAvatar = async (req: AuthRequest, res: Response): Promise<void> => {
+    if (!req.file) {
+        throw new AppError(400, 'Please upload an image file');
+    }
+    const url = getFileUrl(req, req.file.filename);
+    res.json({ url });
+};
+
 export const getEmployeeById = async (req: AuthRequest, res: Response): Promise<void> => {
     const { id } = req.params;
 
@@ -58,10 +76,16 @@ export const getEmployeeById = async (req: AuthRequest, res: Response): Promise<
             { association: 'designation' },
             { association: 'reportingManager', attributes: ['id', 'name', 'email'] },
             { association: 'leaveBalances' },
+            { association: 'documents' },
         ],
     });
 
     if (!employee) {
+        throw new AppError(404, 'Employee not found');
+    }
+
+    // Hide admin from HR
+    if (req.user?.role === 'hr' && employee.role === 'admin') {
         throw new AppError(404, 'Employee not found');
     }
 
@@ -86,7 +110,15 @@ export const createEmployee = async (req: AuthRequest, res: Response): Promise<v
         account_number,
         ifsc_code,
         branch_name,
+        pf_percentage,
+        esi_percentage,
+        absent_deduction_type,
+        absent_deduction_value,
     } = req.body;
+
+    const PayrollSettings = (await import('../models/PayrollSettings')).default;
+    const settings = await PayrollSettings.findOne();
+
 
     // Generate employee ID
     const employee_id = await generateEmployeeId();
@@ -96,9 +128,9 @@ export const createEmployee = async (req: AuthRequest, res: Response): Promise<v
         employee_id,
         name,
         email,
-        password: password || 'Welcome@123', // Default password
+        password: password || 'emp123', // Default password per requirement
         phone,
-        date_of_birth,
+        date_of_birth: date_of_birth === '' ? null : date_of_birth,
         date_of_joining: date_of_joining || new Date(),
         department_id,
         designation_id,
@@ -106,6 +138,10 @@ export const createEmployee = async (req: AuthRequest, res: Response): Promise<v
         salary: salary || 0,
         role: role || 'employee',
         status: 'active',
+        pf_percentage: (pf_percentage !== undefined && pf_percentage !== '') ? pf_percentage : settings?.default_pf_percentage,
+        esi_percentage: (esi_percentage !== undefined && esi_percentage !== '') ? esi_percentage : settings?.default_esi_percentage,
+        absent_deduction_type: (absent_deduction_type !== undefined && absent_deduction_type !== '') ? absent_deduction_type : settings?.default_absent_deduction_type,
+        absent_deduction_value: (absent_deduction_value !== undefined && absent_deduction_value !== '') ? absent_deduction_value : settings?.default_absent_deduction_value,
         address,
         bank_name,
         account_number,
@@ -121,10 +157,22 @@ export const createEmployee = async (req: AuthRequest, res: Response): Promise<v
         { employee_id: employee.id, leave_type: 'earned', total: 15, used: 0, remaining: 15, year: currentYear },
     ]);
 
+    await logAudit({
+        action: 'CREATE',
+        module: 'EMPLOYEE',
+        entity_type: 'USER',
+        entity_id: employee.id,
+        performed_by: req.user!.id,
+        new_value: employee.toJSON(),
+        ip_address: req.ip,
+        user_agent: req.get('user-agent'),
+    });
+
     res.status(201).json({
         message: 'Employee created successfully',
         employee: employee.toJSON(),
     });
+
 };
 
 export const updateEmployee = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -145,7 +193,14 @@ export const updateEmployee = async (req: AuthRequest, res: Response): Promise<v
         account_number,
         ifsc_code,
         branch_name,
+        pf_percentage,
+        esi_percentage,
+        absent_deduction_type,
+        absent_deduction_value,
+        termination_date,
+        termination_reason,
     } = req.body;
+
 
     const employee = await User.findByPk(id as string);
 
@@ -153,29 +208,77 @@ export const updateEmployee = async (req: AuthRequest, res: Response): Promise<v
         throw new AppError(404, 'Employee not found');
     }
 
+    // Restriction: Employees can only edit their own profile within 48 hours of onboarding
+    if (req.user?.role === 'employee') {
+        const createdAt = new Date(employee.created_at);
+        const now = new Date();
+        const diffInHours = Math.abs(now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+
+        if (diffInHours > 48) {
+            throw new AppError(403, 'Profile editing is locked after 48 hours of onboarding. Please contact HR for updates.');
+        }
+    }
+
     // Update allowed fields
     if (name !== undefined) employee.name = name;
     if (phone !== undefined) employee.phone = phone;
-    if (date_of_birth !== undefined) employee.date_of_birth = date_of_birth;
-    if (department_id !== undefined) employee.department_id = department_id;
-    if (designation_id !== undefined) employee.designation_id = designation_id;
-    if (reporting_manager_id !== undefined) employee.reporting_manager_id = reporting_manager_id;
+    if (date_of_birth !== undefined) employee.date_of_birth = date_of_birth === '' ? null : date_of_birth;
+    if (department_id !== undefined) employee.department_id = department_id === '' ? null : department_id;
+    if (designation_id !== undefined) employee.designation_id = designation_id === '' ? null : designation_id;
+    if (reporting_manager_id !== undefined) employee.reporting_manager_id = reporting_manager_id === '' ? null : reporting_manager_id;
     if (status !== undefined) employee.status = status;
     if (address !== undefined) employee.address = address;
     if (avatar_url !== undefined) employee.avatar_url = avatar_url;
-    if (salary !== undefined) employee.salary = salary;
+    if (salary !== undefined) employee.salary = salary === '' ? 0 : salary;
     if (role !== undefined) employee.role = role;
     if (bank_name !== undefined) employee.bank_name = bank_name;
     if (account_number !== undefined) employee.account_number = account_number;
     if (ifsc_code !== undefined) employee.ifsc_code = ifsc_code;
     if (branch_name !== undefined) employee.branch_name = branch_name;
+    if (pf_percentage !== undefined) employee.pf_percentage = pf_percentage === '' ? null : pf_percentage;
+    if (esi_percentage !== undefined) employee.esi_percentage = esi_percentage === '' ? null : esi_percentage;
+    if (absent_deduction_type !== undefined) employee.absent_deduction_type = absent_deduction_type === '' ? null : absent_deduction_type;
+    if (absent_deduction_value !== undefined) employee.absent_deduction_value = absent_deduction_value === '' ? null : absent_deduction_value;
+    if (termination_date !== undefined) employee.termination_date = termination_date === '' ? null : termination_date;
+    if (termination_reason !== undefined) employee.termination_reason = termination_reason;
 
+    // If status is changed to terminated, clear sensitive details
+    if (status === 'terminated') {
+        employee.phone = undefined;
+        employee.address = undefined;
+        employee.date_of_birth = undefined;
+        employee.bank_name = undefined;
+        employee.account_number = undefined;
+        employee.ifsc_code = undefined;
+        employee.branch_name = undefined;
+        employee.salary = 0;
+        employee.avatar_url = undefined;
+        employee.pf_percentage = undefined;
+        employee.esi_percentage = undefined;
+        employee.absent_deduction_type = undefined;
+        employee.absent_deduction_value = undefined;
+    }
+
+    const oldValues = employee.toJSON();
     await employee.save();
+
+    await logAudit({
+        action: 'UPDATE',
+        module: 'EMPLOYEE',
+        entity_type: 'USER',
+        entity_id: employee.id,
+        performed_by: req.user!.id,
+        old_value: oldValues,
+        new_value: employee.toJSON(),
+        ip_address: req.ip,
+        user_agent: req.get('user-agent'),
+    });
 
     res.json({
         message: 'Employee updated successfully',
         employee: employee.toJSON(),
     });
+
 };
 
 export const terminateEmployee = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -197,12 +300,26 @@ export const terminateEmployee = async (req: AuthRequest, res: Response): Promis
     employee.termination_date = termination_date ? new Date(termination_date) : new Date();
     employee.termination_reason = termination_reason || 'No reason provided';
 
+    const oldValues = employee.toJSON();
     await employee.save();
+
+    await logAudit({
+        action: 'TERMINATE',
+        module: 'EMPLOYEE',
+        entity_type: 'USER',
+        entity_id: employee.id,
+        performed_by: req.user!.id,
+        old_value: oldValues,
+        new_value: employee.toJSON(),
+        ip_address: req.ip,
+        user_agent: req.get('user-agent'),
+    });
 
     res.json({
         message: 'Employee terminated successfully',
         employee: employee.toJSON(),
     });
+
 };
 
 export const permanentlyDeleteEmployee = async (req: AuthRequest, res: Response): Promise<void> => {

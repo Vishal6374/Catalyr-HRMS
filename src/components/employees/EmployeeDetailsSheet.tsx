@@ -38,7 +38,7 @@ export function EmployeeDetailsSheet({ employee, open, onOpenChange }: EmployeeD
                             <Avatar className="h-16 w-16 border-2 border-primary/20 shadow-sm">
                                 <AvatarImage src={employee.avatar_url} alt={employee.name} />
                                 <AvatarFallback className="text-xl bg-primary/10 text-primary">
-                                    {employee.name.charAt(0)}
+                                    {employee.name?.charAt(0) || 'U'}
                                 </AvatarFallback>
                             </Avatar>
                             <div>
@@ -52,9 +52,6 @@ export function EmployeeDetailsSheet({ employee, open, onOpenChange }: EmployeeD
                         </div>
                         <div className="flex flex-col items-end gap-2">
                             <StatusBadge status={employee.status} />
-                            <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider">
-                                {employee.onboarding_status}
-                            </Badge>
                         </div>
                     </div>
                 </SheetHeader>
@@ -91,7 +88,11 @@ export function EmployeeDetailsSheet({ employee, open, onOpenChange }: EmployeeD
                                     <p className="text-xs text-muted-foreground">Date of Birth</p>
                                     <p className="text-sm font-medium flex items-center gap-2">
                                         <Calendar className="w-3.5 h-3.5 text-primary" />
-                                        {employee.date_of_birth ? format(new Date(employee.date_of_birth), 'MMM dd, yyyy') : 'N/A'}
+                                        {(() => {
+                                            if (!employee.date_of_birth) return 'N/A';
+                                            const d = new Date(employee.date_of_birth);
+                                            return isNaN(d.getTime()) ? 'N/A' : format(d, 'MMM dd, yyyy');
+                                        })()}
                                     </p>
                                 </div>
                                 <div className="space-y-1">
@@ -152,13 +153,23 @@ export function EmployeeDetailsSheet({ employee, open, onOpenChange }: EmployeeD
                                 <div className="p-3 rounded-lg bg-muted/50">
                                     <p className="text-xs text-muted-foreground mb-1">Date of Joining</p>
                                     <p className="text-sm font-bold">
-                                        {employee.date_of_joining ? format(new Date(employee.date_of_joining), 'MMM dd, yyyy') : 'N/A'}
+                                        {(() => {
+                                            if (!employee.date_of_joining) return 'N/A';
+                                            const d = new Date(employee.date_of_joining);
+                                            return isNaN(d.getTime()) ? 'N/A' : format(d, 'MMM dd, yyyy');
+                                        })()}
                                     </p>
                                 </div>
                                 <div className="p-3 rounded-lg bg-muted/50">
                                     <p className="text-xs text-muted-foreground mb-1">Experience at Catalyr</p>
                                     <p className="text-sm font-bold">
-                                        {employee.date_of_joining ? `${Math.floor((new Date().getTime() - new Date(employee.date_of_joining).getTime()) / (1000 * 60 * 60 * 24 * 365))} Years` : 'N/A'}
+                                        {(() => {
+                                            if (!employee.date_of_joining) return 'N/A';
+                                            const d = new Date(employee.date_of_joining);
+                                            if (isNaN(d.getTime())) return 'N/A';
+                                            const diff = new Date().getTime() - d.getTime();
+                                            return `${Math.floor(diff / (1000 * 60 * 60 * 24 * 365))} Years`;
+                                        })()}
                                     </p>
                                 </div>
                             </div>
@@ -170,17 +181,19 @@ export function EmployeeDetailsSheet({ employee, open, onOpenChange }: EmployeeD
                             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                                 <DollarSign className="w-4 h-4" /> Salary Information
                             </h3>
-                            <div className="p-4 rounded-xl gradient-primary text-white shadow-lg overflow-hidden relative">
+                            <div className="p-4 rounded-xl gradient-primary  shadow-lg overflow-hidden relative">
                                 <div className="relative z-10">
-                                    <p className="text-xs text-white/70 font-medium">Monthly Basic Fixed</p>
+                                    <p className="text-xs font-medium">Monthly Basic Fixed</p>
                                     <p className="text-3xl font-black mt-1">₹{Number(employee.salary).toLocaleString()}</p>
-                                    <div className="flex gap-4 mt-4">
+                                    <div className="flex flex-wrap gap-4 mt-4">
                                         <div className="px-2 py-1 rounded bg-white/20 text-[10px] font-bold">ANNUAL: ₹{(employee.salary * 12).toLocaleString()}</div>
-                                        <div className="px-2 py-1 rounded bg-white/20 text-[10px] font-bold">PF ELIGIBLE: YES</div>
+                                        <div className="px-2 py-1 rounded bg-white/20 text-[10px] font-bold">PF: {employee.pf_percentage || '0'}%</div>
+                                        <div className="px-2 py-1 rounded bg-white/20 text-[10px] font-bold">ESI: {employee.esi_percentage || '0'}%</div>
+                                        <div className="px-2 py-1 rounded bg-white/20 text-[10px] font-bold uppercase">ABSENT: {employee.absent_deduction_type === 'percentage' ? `${employee.absent_deduction_value}% Monthly` : `₹${employee.absent_deduction_value}`}</div>
                                     </div>
                                 </div>
                                 <div className="absolute top-0 right-0 p-4 opacity-20 transform translate-x-4 -translate-y-4 scale-150">
-                                    <DollarSign className="w-24 h-24" />
+                                    {/* <DollarSign className="w-24 h-24" /> */}
                                 </div>
                             </div>
                         </section>
@@ -218,7 +231,7 @@ export function EmployeeDetailsSheet({ employee, open, onOpenChange }: EmployeeD
                     <TabsContent value="documents" className="space-y-6">
                         <div className="flex flex-col items-center justify-center p-12 bg-muted/20 border-2 border-dashed rounded-2xl text-center">
                             <FileText className="w-10 h-10 text-muted-foreground mb-4 opacity-20" />
-                            <h3 className="text-lg font-semibold">Onboarding Documents</h3>
+                            <h3 className="text-lg font-semibold">Employee Documents</h3>
                             <p className="text-sm text-muted-foreground max-w-[280px]">HR can view full document audit history in the main Employee Management module.</p>
                         </div>
                     </TabsContent>
@@ -226,7 +239,7 @@ export function EmployeeDetailsSheet({ employee, open, onOpenChange }: EmployeeD
 
                 <Separator className="mt-8 mb-4 " />
                 <div className="flex items-center justify-between mt-auto">
-                    <p className="text-[10px] text-muted-foreground">Employee record last updated: {format(new Date(), 'MMM dd, HH:mm')}</p>
+                    <p className="text-[10px] text-muted-foreground">Employee record last updated: {format(new Date(), 'MMM dd, hh:mm a')}</p>
                     <p className="text-[10px] text-primary font-bold uppercase">HR Verified Secure</p>
                 </div>
             </SheetContent>

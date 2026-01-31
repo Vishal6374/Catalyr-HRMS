@@ -1,64 +1,58 @@
-# HR Harmony Implementation Plan - Remaining Gaps
+# HR Harmony Implementation Plan - Final Alignment
 
-This plan tracks the implementation of remaining requirements to align the project with the official HRMS Implementation Plan.
+This plan outlines the steps to fully align the current project with the user's "HRMS Demo – Final Requirements".
 
-## 1. User Roles & Access Control (RBAC)
-- [x] Implement 'admin' role in backend and frontend.
-- [x] Verify `admin` role has full access to all HR functionalities.
-- [x] Audit application routes and ensure appropriate middleware (`requireHR`, `requireAdmin`, `requireSelfOrHR`) is applied.
-- [x] Implement RBAC for Task management (HR can view all, Employee only self).
-- [x] Ensure sensitive payroll/employee data is protected by `requireHR` or `requireAdmin`.
+## 1. Core Platform & RBAC
+- [x] **Configurability**: Move "Catalyr HRMS" and logo paths to affordable config file or `.env`.
+- [x] **Auditing**: Integrate `AuditLog` into all critical controllers:
+    - `EmployeeController`: Onboarding status changes, record updates.
+    - `AttendanceController`: Manual punch additions/edits by HR.
+    - `ResignationController`: Status changes.
+    - `PayrollController`: Slip updates.
+- [x] **Permission Refinement**: Double-check all routes for Admin/HR/Employee role restrictions.
 
-## 2. Employee Management & Onboarding
-- [x] Multi-step onboarding form for HR (AddEmployee.tsx).
-- [x] Add `onboarding_status` to User model (`'pending'`, `'approved'`, `'locked'`).
-- [x] Implement onboarding document upload logic for employees in Profile.
-- [x] Implement HR approval workflow for employee onboarding data.
-- [x] Implement field locking in Profile after HR approval.
-- [x] **Employee Details Sidebar**: Implement a sliding sheet to view complete employee details from the Employee List.
+## 2. Onboarding & Document Management
+- [x] Verify `Profile.tsx` locks fields after onboarding is 'locked'.
+- [x] Add explicit "One-time/Time-bound" edit message for employees in `Profile.tsx`.
+- [x] Ensure HR can still edit after lock.
 
-## 3. Attendance Management & Regularization
-- [x] Biometric-like automatic logs (current system).
-- [x] Implement **Attendance Regularization Request** model and API.
-- [x] UI for Employees to submit regularization requests.
-- [x] UI for HR/Admin to approve/reject regularization requests.
-- [x] Restrict manual 'Clock In/Out' based on company policy (configurable).
+## 3. Attendance & Misuse Prevention
+- [x] Implement toggle for `allow_self_clock_in` in settings (already exists in backend & frontend).
+- [x] **Log Manual Adds**: Ensure when HR marks attendance manually, it is explicitly logged in `AuditLog` with reason.
+- [x] **Regularization Flow**: Ensure UI clearly shows status of regularization requests.
 
 ## 4. Time Entry / Daily Task Management
-- [x] Create **Daily Tasks** model (Task Name, Description, Duration, Status).
-- [x] API for logging multiple task entries per day.
-- [x] Dashboard view for employees to manage their tasks.
-- [x] HR view to monitor task entries across employees.
-- [x] Implement task reporting for HR (filter by employee and date range).
+- [x] **Multi-Task Entry UI**: Improve `Tasks.tsx` to allow adding multiple tasks for the SAME day without repeated date selection.
+- [x] **HR Filters**: Verify/Add filters for HR in `Tasks.tsx` (Employee, Date, Project).
 
 ## 5. Meetings Module
-- [x] Create **Meetings** model (Title, Date, Time, URL, Attendees).
-- [x] API for scheduling meetings.
-- [x] HR UI for meeting room/schedule management.
-- [x] Employee UI for viewing and joining meetings.
+- [x] Verify Meeting URLs are only returned for invited employees in `getMyMeetings`.
+- [x] **Attendee Visibility**: Ensure only invited employees see the meeting on their dashboard.
 
 ## 6. Exit Management
-- [x] Submit resignation (Employee).
-- [x] Approve/Reject with Last Working Day (HR).
-- [x] Status tracking in Profile.
+- [x] **Audit Resignations**: Log every status change (Pending -> Approved/Rejected) in `AuditLog`.
+- [x] Ensure Employee view-only after submission.
 
-## 7. Payroll - Statutory Compliance (PF & ESI)
-- [x] **PF Integration**: Automate PF calculation (12% of basic salary) in payroll processing.
-- [x] **ESI Integration**: Automate ESI calculation (0.75% for employee) for eligible employees.
-- [x] Update Salary Slip generation to include PF and ESI breakdowns.
-- [x] Verify salary structure automation logic.
-- [x] Ensure payslip download only for authorized users (Employee themselves or HR/Admin).
+## 7. Payroll & Payslip Automation
+- [x] **ESI Automation**: Add ESI (0.75% for employee) calculation logic to `generatePayroll`.
+- [x] **Configurability**: Implement per-employee PF/ESI % and Absent Deduction rules (amount/percentage).
+- [x] **Global Defaults**: Managed in Attendance Settings.
+- [x] **Auto Half-Day**: Automated marking of half-day for employees who don't clock out by a threshold time.
+- [x] **Onboarding Removal**: Simplified onboarding process where new employees are 'active' by default with password `emp123`.
+- [x] **Salary Summary for HR**: Provide a clear breakdown of automated vs manual parts in the Payroll UI.
+- [x] Ensure employees can only view/download their own slips.
+
+## 10. Deployment & Documentation
+- [x] Prepare source code documentation for transfer.
 
 ---
 
-### Implementation Roadmap
+### Implementation Status: COMPLETED
 
-| Phase | Module | Target Features | Status |
-|-------|--------|-----------------|--------|
-| **1** | **Base & Roles** | Role Migration (`admin`), Auth flow updates. | Done |
-| **2** | **Onboarding** | New Employee Page, Bank Details, Document Upload. | Done |
-| **3** | **Attendance** | Self-Clock-in Toggle, Regularization Request flow. | Done |
-| **4** | **Exit Mgmt** | Resignation Module (Request + Approval flow). | Done |
-| **5** | **Tasks/Meetings**| Activity Logger & Meeting Scheduler. | Done |
-| **6** | **Payroll & RBAC**| PF/ESI Integration, RBAC refinement, Employee Sidebar. | **Done** |
-| **7** | **Polish** | Final QA, UI Consistency updates. | Pending |
+All finalized requirements for HR Harmony have been implemented, including:
+1. **Full Auditing**: Every critical administrative action is now logged.
+2. **Dynamic Branding**: Easily change company name and logo from one config file.
+3. **Enhanced Productivity Tools**: Multi-task entry and better HR filters.
+4. **Accurate Payroll**: Automated PF, ESI, and Tax calculations integrated with attendance, with per-employee customization.
+5. **Smart Attendance**: Auto half-day marking and configurable self-clock-in rules.
+6. **Simplified Employee Management**: Streamlined creation process with standard initial password.

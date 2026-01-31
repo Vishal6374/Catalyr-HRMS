@@ -9,6 +9,7 @@ import PayrollDashboardSimple from './payroll/PayrollDashboardSimple';
 import PayrollProcess from './payroll/PayrollProcess';
 import MyPayslips from './payroll/MyPayslips';
 import BasicPayManager from './payroll/BasicPayManager';
+import { PayrollSettings } from '@/components/payroll/PayrollSettings';
 
 export default function PayrollUnified() {
     const { isHR } = useAuth();
@@ -29,10 +30,12 @@ export default function PayrollUnified() {
 
                 {isHR ? (
                     <Tabs value={activeTab} onValueChange={handleTabChange}>
-                        <TabsList className="grid w-full grid-cols-3">
+                        <TabsList className="grid w-full grid-cols-5">
                             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
                             <TabsTrigger value="basic-pay">Basic Pay</TabsTrigger>
                             <TabsTrigger value="process">Process Payroll</TabsTrigger>
+                            <TabsTrigger value="settings">Settings</TabsTrigger>
+                            <TabsTrigger value="my-payslips">My Payslips</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="dashboard" className="mt-6">
@@ -45,6 +48,14 @@ export default function PayrollUnified() {
 
                         <TabsContent value="process" className="mt-6">
                             <PayrollProcess />
+                        </TabsContent>
+
+                        <TabsContent value="settings" className="mt-6">
+                            <PayrollSettings />
+                        </TabsContent>
+
+                        <TabsContent value="my-payslips" className="mt-6">
+                            <MyPayslips />
                         </TabsContent>
                     </Tabs>
                 ) : (

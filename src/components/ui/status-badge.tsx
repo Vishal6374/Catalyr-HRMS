@@ -28,11 +28,13 @@ const statusToVariant: Record<string, StatusVariant> = {
 };
 
 export function StatusBadge({ status, variant, className }: StatusBadgeProps) {
-  const computedVariant = variant || statusToVariant[status.toLowerCase()] || 'default';
+  const safeStatus = status || 'unknown';
+  const computedVariant = variant || statusToVariant[safeStatus.toLowerCase()] || 'default';
+
   return (
     <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border', variantStyles[computedVariant], className)}>
       <span className={cn('w-1.5 h-1.5 rounded-full', computedVariant === 'success' && 'bg-success', computedVariant === 'warning' && 'bg-warning', computedVariant === 'destructive' && 'bg-destructive', computedVariant === 'info' && 'bg-info', computedVariant === 'muted' && 'bg-muted-foreground', computedVariant === 'default' && 'bg-primary')} />
-      {status.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+      {safeStatus.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
     </span>
   );
 }

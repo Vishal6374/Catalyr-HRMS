@@ -44,7 +44,7 @@ export default function Meetings() {
 
     const { data: employeesData } = useQuery({
         queryKey: ['employees-for-meetings'],
-        queryFn: async () => (await employeeService.getAll()).data,
+        queryFn: async () => (await employeeService.getAll({ status: 'active' })).data,
         enabled: isHR,
     });
     const employees = employeesData?.employees || [];
@@ -80,6 +80,19 @@ export default function Meetings() {
 
     const upcomingMeetings = meetings.filter((m: any) => isAfter(new Date(`${m.date} ${m.start_time}`), new Date()));
     const pastMeetings = meetings.filter((m: any) => isBefore(new Date(`${m.date} ${m.start_time}`), new Date()));
+
+    const formatTime12h = (time: string) => {
+        if (!time) return '';
+        try {
+            const [hours, minutes] = time.split(':');
+            const h = parseInt(hours, 10);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const h12 = h % 12 || 12;
+            return `${h12}:${minutes} ${ampm}`;
+        } catch (e) {
+            return time;
+        }
+    };
 
     return (
         <MainLayout>
@@ -269,7 +282,7 @@ export default function Meetings() {
                                                     <div className="flex flex-wrap items-center gap-6 pt-2">
                                                         <div className="flex items-center gap-1.5 text-sm font-medium">
                                                             <Clock className="w-4 h-4 text-primary" />
-                                                            {meeting.start_time} - {meeting.end_time}
+                                                            {formatTime12h(meeting.start_time)} - {formatTime12h(meeting.end_time)}
                                                         </div>
                                                         <div className="flex items-center gap-1.5 text-sm font-medium">
                                                             {meeting.type === 'virtual' ? (
@@ -324,7 +337,7 @@ export default function Meetings() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-bold truncate">{meeting.title}</p>
-                                                <p className="text-xs text-muted-foreground">{format(new Date(meeting.date), 'MMM dd')} • {meeting.start_time}</p>
+                                                <p className="text-xs text-muted-foreground">{format(new Date(meeting.date), 'MMM dd')} • {formatTime12h(meeting.start_time)}</p>
                                             </div>
                                         </div>
                                     ))

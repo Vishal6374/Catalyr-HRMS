@@ -17,6 +17,8 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
 
     if (req.user?.role === 'hr') {
         // HR Dashboard
+        const adminExclusion = { role: { [Op.ne]: 'admin' } };
+
         const [
             totalEmployees,
             activeEmployees,
@@ -28,29 +30,38 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
             activeComplaints,
             currentPayroll,
         ] = await Promise.all([
-            User.count(),
-            User.count({ where: { status: 'active' } }),
+            User.count({ where: adminExclusion }),
+            User.count({ where: { status: 'active', ...adminExclusion } }),
             AttendanceLog.count({
                 where: {
                     date: today,
                     status: 'present',
                 },
+                include: [{ association: 'employee', where: adminExclusion }]
             }),
             AttendanceLog.count({
                 where: {
                     date: today,
                     status: 'absent',
                 },
+                include: [{ association: 'employee', where: adminExclusion }]
             }),
-            User.count({ where: { status: 'on_leave' } }),
-            LeaveRequest.count({ where: { status: 'pending' } }),
-            Reimbursement.count({ where: { status: 'pending' } }),
+            User.count({ where: { status: 'on_leave', ...adminExclusion } }),
+            LeaveRequest.count({
+                where: { status: 'pending' },
+                include: [{ association: 'employee', where: adminExclusion }]
+            }),
+            Reimbursement.count({
+                where: { status: 'pending' },
+                include: [{ association: 'employee', where: adminExclusion }]
+            }),
             Complaint.count({
                 where: {
                     status: {
                         [Op.in]: ['open', 'in_progress'],
                     },
                 },
+                include: [{ association: 'employee', where: adminExclusion }]
             }),
             PayrollBatch.findOne({
                 where: {

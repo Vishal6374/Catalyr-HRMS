@@ -5,21 +5,18 @@ import { DataTable, Column } from '@/components/ui/data-table';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Employee } from '@/types/hrms';
 import { Search, UserPlus, Eye, Pencil, UserX, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { employeeService, departmentService, designationService } from '@/services/apiService';
+import { employeeService, departmentService } from '@/services/apiService';
 import { toast } from 'sonner';
 import { TerminateEmployeeModal } from '@/components/employees/TerminateEmployeeModal';
 import { EmployeeDetailsSheet } from '@/components/employees/EmployeeDetailsSheet';
 import { PageLoader } from '@/components/ui/page-loader';
-import Loader from '@/components/ui/Loader';
 
 export default function Employees() {
   const { isHR } = useAuth();
@@ -27,31 +24,10 @@ export default function Employees() {
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('active'); // Default to active only
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [isTerminateModalOpen, setIsTerminateModalOpen] = useState(false);
   const [employeeToTerminate, setEmployeeToTerminate] = useState<any>(null);
   const [isDetailsSheetOpen, setIsDetailsSheetOpen] = useState(false);
   const [currentDetailsEmployee, setCurrentDetailsEmployee] = useState<Employee | null>(null);
-
-  // Form Data
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    department_id: '',
-    designation_id: '',
-    role: 'employee',
-    status: 'active',
-    salary: '',
-    address: '',
-    bank_name: '',
-    account_number: '',
-    ifsc_code: '',
-    branch_name: '',
-    password: '',
-    onboarding_status: 'pending'
-  });
 
   const queryClient = useQueryClient();
 
@@ -73,29 +49,14 @@ export default function Employees() {
 
   const employees = data?.employees || [];
 
-  // Fetch Depts & Desigs
+  // Fetch Depts
   const { data: departments = [] } = useQuery({
     queryKey: ['departments'],
     queryFn: async () => { const { data } = await departmentService.getAll(); return data; }
   });
-  const { data: designations = [] } = useQuery({
-    queryKey: ['designations'],
-    queryFn: async () => { const { data } = await designationService.getAll(); return data; }
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: any) => employeeService.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
-      setIsDialogOpen(false);
-      toast.success('Employee updated successfully');
-      resetForm();
-    },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to update employee'),
-  });
 
   const terminateMutation = useMutation({
-    mutationFn: ({ id, data }: any) => employeeService.terminate(id, data),
+    mutationFn: ({ id, data }: any) => employeeService.update(id, { ...data, status: 'terminated' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       setIsTerminateModalOpen(false);
@@ -105,190 +66,98 @@ export default function Employees() {
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to terminate employee'),
   });
 
-  const resetForm = () => {
-    setSelectedEmployee(null);
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      department_id: '',
-      designation_id: '',
-      role: 'employee',
-      status: 'active',
-      salary: '',
-      address: '',
-      bank_name: '',
-      account_number: '',
-      ifsc_code: '',
-      branch_name: '',
-      password: '',
-      onboarding_status: 'pending'
-    });
-  };
-
-  const openCreateDialog = () => {
-    navigate('/employees/new');
-  };
-
-  const openEditDialog = (emp: any) => {
-    setSelectedEmployee(emp);
-    setFormData({
-      name: emp.name,
-      email: emp.email,
-      phone: emp.phone || '',
-      department_id: emp.department_id || '',
-      designation_id: emp.designation_id || '',
-      role: emp.role,
-      status: emp.status,
-      salary: emp.salary || '',
-      address: emp.address || '',
-      bank_name: emp.bank_name || '',
-      account_number: emp.account_number || '',
-      ifsc_code: emp.ifsc_code || '',
-      branch_name: emp.branch_name || '',
-      password: '',
-      onboarding_status: emp.onboarding_status || 'pending'
-    });
-    setIsDialogOpen(true);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const payload = { ...formData };
-    if (!payload.password) delete (payload as any).password;
-
-    if (selectedEmployee) {
-      updateMutation.mutate({ id: selectedEmployee.id, data: payload });
-    }
-  };
-
-  const handleTerminate = (emp: any) => {
-    setEmployeeToTerminate(emp);
-    setIsTerminateModalOpen(true);
-  };
-
-  const handleConfirmTerminate = (data: any) => {
+  const handleTerminate = (data: any) => {
     if (employeeToTerminate) {
       terminateMutation.mutate({ id: employeeToTerminate.id, data });
     }
   };
 
-  const openDetailsSheet = (emp: Employee) => {
-    setCurrentDetailsEmployee(emp);
-    setIsDetailsSheetOpen(true);
-  };
-
   const columns: Column<Employee>[] = [
     {
-      key: 'employee',
+      key: 'name',
       header: 'Employee',
       cell: (emp) => (
-        <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => openDetailsSheet(emp)}>
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={emp.avatar_url} alt={emp.name} />
-            <AvatarFallback>{emp.name.charAt(0)}</AvatarFallback>
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setCurrentDetailsEmployee(emp); setIsDetailsSheetOpen(true); }}>
+          <Avatar className="h-10 w-10 border border-primary/10 shadow-sm">
+            <AvatarImage src={emp.avatar_url} />
+            <AvatarFallback className="bg-primary/5 text-primary text-xs font-bold">{emp.name?.charAt(0)}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium">{emp.name}</p>
-            <p className="text-xs text-muted-foreground">{emp.employee_id}</p>
+            <p className="font-bold text-sm tracking-tight">{emp.name}</p>
+            <p className="text-xs text-muted-foreground font-medium">{emp.employee_id} • {emp.designation?.name || 'N/A'}</p>
           </div>
         </div>
       ),
     },
-    { key: 'email', header: 'Email', cell: (emp) => <span className="text-muted-foreground text-sm">{emp.email}</span> },
-    { key: 'department', header: 'Department', cell: (emp) => <span>{emp.department?.name || 'Unknown'}</span> },
-    { key: 'designation', header: 'Designation', cell: (emp) => <span className="text-muted-foreground">{emp.designation?.name || 'Unknown'}</span> },
-    { key: 'onboarding', header: 'Onboarding', cell: (emp: any) => <StatusBadge status={emp.onboarding_status} /> },
+    { key: 'department', header: 'Department', cell: (emp) => <span className="text-sm font-medium">{emp.department?.name || 'N/A'}</span> },
+    { key: 'role', header: 'Role', cell: (emp) => <span className="capitalize text-xs font-semibold px-2 py-1 bg-muted rounded-md">{emp.role}</span> },
     { key: 'status', header: 'Status', cell: (emp) => <StatusBadge status={emp.status} /> },
     {
       key: 'actions',
       header: '',
       cell: (emp) => (
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDetailsSheet(emp)} title="View Details">
+        <div className="flex items-center gap-1 justify-end">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={() => { setCurrentDetailsEmployee(emp); setIsDetailsSheetOpen(true); }}>
             <Eye className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(emp)} title="Edit">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-600 hover:bg-amber-50" onClick={() => navigate(`/employees/edit/${emp.id}`)}>
             <Pencil className="w-4 h-4" />
           </Button>
-          {emp.status !== 'terminated' && (
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-orange-600 hover:text-orange-700 hover:bg-orange-50" onClick={() => handleTerminate(emp)} title="Terminate">
+          {emp.status !== 'terminated' ? (
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => { setEmployeeToTerminate(emp); setIsTerminateModalOpen(true); }}>
               <UserX className="w-4 h-4" />
             </Button>
-          )}
-          {emp.onboarding_status !== 'locked' && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-              onClick={() => updateMutation.mutate({ id: emp.id, data: { onboarding_status: 'locked' } })}
-              title="Lock/Approve Profile"
-            >
+          ) : (
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-success hover:bg-success/10" title="Reactivate (Not implemented)">
               <CheckCircle2 className="w-4 h-4" />
             </Button>
           )}
         </div>
       ),
-      className: 'w-[100px]',
     },
   ];
 
-  if (isLoading) {
-    return <PageLoader />;
-  }
+  if (isLoading) return <PageLoader />;
 
   return (
     <MainLayout>
-      <div className="space-y-4 sm:space-y-6 animate-fade-in">
-        <PageHeader title="Employees" description="Manage your organization's workforce">
-          <Button onClick={openCreateDialog}>
-            <UserPlus className="w-4 h-4 mr-2" />
-            Add Employee
+      <div className="space-y-6 animate-fade-in">
+        <PageHeader title="Employees" description="Manage your team members and their information.">
+          <Button onClick={() => navigate('/employees/new')} className="shadow-lg shadow-primary/20">
+            <UserPlus className="w-4 h-4 mr-2" /> Add Employee
           </Button>
         </PageHeader>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="p-4 rounded-xl bg-card border">
-            <p className="text-sm text-muted-foreground">Total</p>
-            <p className="text-xl sm:text-2xl font-bold">{employees.length}</p>
+        <div className="flex flex-col sm:flex-row gap-4 items-end sm:items-center justify-between p-4 bg-card border rounded-2xl shadow-sm">
+          <div className="flex flex-1 items-center gap-4 w-full">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search employees..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 h-10 bg-muted/50 border-none"
+              />
+            </div>
           </div>
-          <div className="p-4 rounded-xl bg-card border">
-            <p className="text-sm text-muted-foreground">Active</p>
-            <p className="text-xl sm:text-2xl font-bold text-success">{employees.filter((e) => e.status === 'active').length}</p>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+              <SelectTrigger className="w-full sm:w-[160px] h-10 bg-muted/50 border-none"><SelectValue placeholder="All Depts" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[140px] h-10 bg-muted/50 border-none"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="terminated">Terminated</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div className="p-4 rounded-xl bg-card border">
-            <p className="text-sm text-muted-foreground">On Leave</p>
-            <p className="text-xl sm:text-2xl font-bold text-warning">{employees.filter((e) => e.status === 'on_leave').length}</p>
-          </div>
-          <div className="p-4 rounded-xl bg-card border">
-            <p className="text-sm text-muted-foreground">HR Staff</p>
-            <p className="text-xl sm:text-2xl font-bold">{employees.filter((e) => e.role === 'hr').length}</p>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-          <div className="relative w-full sm:flex-1 sm:max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search employees..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[150px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="on_leave">On Leave</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-              <SelectItem value="terminated">Terminated</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         <DataTable
@@ -298,150 +167,21 @@ export default function Employees() {
           emptyMessage="No employees found"
         />
 
-        {/* Create/Edit Dialog */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{selectedEmployee ? 'Edit Employee' : 'Add Employee'}</DialogTitle>
-              <DialogDescription>
-                {selectedEmployee ? 'Update employee details.' : 'Onboard a new employee to the system.'}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
+        <TerminateEmployeeModal
+          open={isTerminateModalOpen}
+          onOpenChange={setIsTerminateModalOpen}
+          employee={employeeToTerminate}
+          onConfirm={handleTerminate}
+          isLoading={terminateMutation.isPending}
+        />
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
-                  <Select
-                    value={formData.department_id}
-                    onValueChange={(value) => setFormData({ ...formData, department_id: value })}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Dept" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departments.map((dept: any) => (
-                        <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="designation">Designation</Label>
-                  <Select
-                    value={formData.designation_id}
-                    onValueChange={(value) => setFormData({ ...formData, designation_id: value })}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Job Title" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {designations.map((des: any) => (
-                        <SelectItem key={des.id} value={des.id}>{des.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="role">System Role</Label>
-                  <Select
-                    value={formData.role}
-                    onValueChange={(value) => setFormData({ ...formData, role: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="employee">Employee</SelectItem>
-                      <SelectItem value="hr">HR Administrator</SelectItem>
-                      <SelectItem value="admin">System Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) => setFormData({ ...formData, status: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="on_leave">On Leave</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {!selectedEmployee && (
-                <div className="space-y-2">
-                  <Label htmlFor="password">Initial Password</Label>
-                  <Input
-                    id="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  />
-                  <p className="text-xs text-muted-foreground">Default: password123</p>
-                </div>
-              )}
-
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={updateMutation.isPending}>
-                  {updateMutation.isPending && <Loader size="small" variant="white" className="mr-2" />}
-                  Update Employee
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Terminate Employee Modal */}
-        {employeeToTerminate && (
-          <TerminateEmployeeModal
-            open={isTerminateModalOpen}
-            onOpenChange={setIsTerminateModalOpen}
-            employee={employeeToTerminate}
-            onConfirm={handleConfirmTerminate}
-            isLoading={terminateMutation.isPending}
+        {currentDetailsEmployee && (
+          <EmployeeDetailsSheet
+            open={isDetailsSheetOpen}
+            onOpenChange={setIsDetailsSheetOpen}
+            employee={currentDetailsEmployee}
           />
         )}
-
-        {/* Employee Details Sheet */}
-        <EmployeeDetailsSheet
-          open={isDetailsSheetOpen}
-          onOpenChange={setIsDetailsSheetOpen}
-          employee={currentDetailsEmployee}
-        />
       </div>
     </MainLayout>
   );
