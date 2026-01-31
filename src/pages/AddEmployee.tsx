@@ -11,12 +11,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { employeeService, departmentService, designationService } from '@/services/apiService';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, User, Briefcase, CreditCard, FileText, Check, Upload, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, User, Briefcase, CreditCard, FileText, Check, Upload, Trash2, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import Loader from '@/components/ui/Loader';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { employeeDocumentService } from '@/services/apiService';
+import { useAuth } from '@/contexts/AuthContext';
 
 const steps = [
     { id: 'personal', title: 'Personal Info', icon: User },
@@ -26,6 +27,7 @@ const steps = [
 ];
 
 export default function AddEmployee() {
+    const { isAdmin, isHR: authIsHR } = useAuth();
     const { id } = useParams();
     const isEdit = !!id;
     const navigate = useNavigate();
@@ -54,6 +56,10 @@ export default function AddEmployee() {
         esi_percentage: '',
         absent_deduction_type: 'percentage',
         absent_deduction_value: '100',
+        education: '',
+        aadhaar_number: '',
+        pan_number: '',
+        custom_fields: {} as any,
     });
 
     const [documents, setDocuments] = useState<{ type: string; file: File | null; url?: string }[]>([
@@ -104,6 +110,10 @@ export default function AddEmployee() {
                 esi_percentage: employeeToEdit.esi_percentage || '',
                 absent_deduction_type: employeeToEdit.absent_deduction_type || 'percentage',
                 absent_deduction_value: employeeToEdit.absent_deduction_value || '',
+                education: employeeToEdit.education || '',
+                aadhaar_number: employeeToEdit.aadhaar_number || '',
+                pan_number: employeeToEdit.pan_number || '',
+                custom_fields: employeeToEdit.custom_fields || {},
             });
 
             if (employeeToEdit.documents && Array.isArray(employeeToEdit.documents)) {
@@ -310,9 +320,64 @@ export default function AddEmployee() {
                                                 <Label>Date of Birth</Label>
                                                 <Input type="date" value={formData.date_of_birth} onChange={e => updateFormData('date_of_birth', e.target.value)} />
                                             </div>
+                                            <div className="space-y-2">
+                                                <Label>Education</Label>
+                                                <Input value={formData.education} onChange={e => updateFormData('education', e.target.value)} placeholder="Highest Degree" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Aadhaar Number</Label>
+                                                <Input value={formData.aadhaar_number} onChange={e => updateFormData('aadhaar_number', e.target.value)} placeholder="12-digit number" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>PAN Number</Label>
+                                                <Input value={formData.pan_number} onChange={e => updateFormData('pan_number', e.target.value)} placeholder="ABCDE1234F" />
+                                            </div>
                                             <div className="space-y-2 sm:col-span-2">
                                                 <Label>Residential Address*</Label>
                                                 <Textarea value={formData.address} onChange={e => updateFormData('address', e.target.value)} placeholder="Enter full address" rows={3} required />
+                                            </div>
+
+                                            {/* Custom Fields */}
+                                            <div className="sm:col-span-2 space-y-4 pt-4 border-t">
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-sm font-bold">Custom Fields</Label>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => {
+                                                        const name = prompt('Enter field name:');
+                                                        if (name) {
+                                                            const newFields = { ...formData.custom_fields, [name]: '' };
+                                                            updateFormData('custom_fields', newFields);
+                                                        }
+                                                    }}>
+                                                        <Plus className="w-3 h-3 mr-1" /> Add Field
+                                                    </Button>
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    {Object.entries(formData.custom_fields || {}).map(([key, value]: [string, any]) => (
+                                                        <div key={key} className="space-y-2 group relative">
+                                                            <div className="flex justify-between">
+                                                                <Label className="capitalize">{key.replace(/_/g, ' ')}</Label>
+                                                                <button
+                                                                    type="button"
+                                                                    className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                    onClick={() => {
+                                                                        const newFields = { ...formData.custom_fields };
+                                                                        delete newFields[key];
+                                                                        updateFormData('custom_fields', newFields);
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="w-3 h-3" />
+                                                                </button>
+                                                            </div>
+                                                            <Input
+                                                                value={value}
+                                                                onChange={(e) => {
+                                                                    const newFields = { ...formData.custom_fields, [key]: e.target.value };
+                                                                    updateFormData('custom_fields', newFields);
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -355,8 +420,12 @@ export default function AddEmployee() {
                                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="employee">Employee</SelectItem>
-                                                    <SelectItem value="hr">HR Administrator</SelectItem>
-                                                    <SelectItem value="admin">System Admin</SelectItem>
+                                                    {isAdmin && (
+                                                        <>
+                                                            <SelectItem value="hr">HR Administrator</SelectItem>
+                                                            <SelectItem value="admin">System Admin</SelectItem>
+                                                        </>
+                                                    )}
                                                 </SelectContent>
                                             </Select>
                                         </div>

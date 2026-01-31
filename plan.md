@@ -1,58 +1,53 @@
-# HR Harmony Implementation Plan - Final Alignment
+# Catalyr HRMS Implementation Plan - Phase 2
 
-This plan outlines the steps to fully align the current project with the user's "HRMS Demo – Final Requirements".
+This plan outlines the steps to implement the new requirements requested by the user.
 
-## 1. Core Platform & RBAC
-- [x] **Configurability**: Move "Catalyr HRMS" and logo paths to affordable config file or `.env`.
-- [x] **Auditing**: Integrate `AuditLog` into all critical controllers:
-    - `EmployeeController`: Onboarding status changes, record updates.
-    - `AttendanceController`: Manual punch additions/edits by HR.
-    - `ResignationController`: Status changes.
-    - `PayrollController`: Slip updates.
-- [x] **Permission Refinement**: Double-check all routes for Admin/HR/Employee role restrictions.
+## 1. Leaves
+- [ ] **Edit/Delete Requests**: Allow employees to edit or delete leave requests until they are approved by HR or Admin.
+- [ ] **Fix Day Count Logic**: Update the logic to correctly count days (e.g., Jan 30 - Feb 2 should be 4 days).
+- [ ] **"On Date" Option**: Add an "on date" option for single-day leave requests.
+- [ ] **Leave Type Management**: Ensure all leave types (casual, sick, etc.) are editable and included in leave apply options.
 
-## 2. Onboarding & Document Management
-- [x] Verify `Profile.tsx` locks fields after onboarding is 'locked'.
-- [x] Add explicit "One-time/Time-bound" edit message for employees in `Profile.tsx`.
-- [x] Ensure HR can still edit after lock.
+## 2. Profile Management
+- [ ] **Edit Time Limit**: Implement a 48-hour window for profile editing, switching to view-only mode afterwards.
+- [ ] **New Fields**: Add an "Education" field to the profile.
+- [ ] **Split Identity Fields**: Separate "Aadhaar" and "PAN" into individual fields.
+- [ ] **Custom Fields**: Add an option for an additional custom field with a title and value.
 
-## 3. Attendance & Misuse Prevention
-- [x] Implement toggle for `allow_self_clock_in` in settings (already exists in backend & frontend).
-- [x] **Log Manual Adds**: Ensure when HR marks attendance manually, it is explicitly logged in `AuditLog` with reason.
-- [x] **Regularization Flow**: Ensure UI clearly shows status of regularization requests.
+## 3. Payroll
+- [ ] **Rounding**: Implement rounding off for all payroll calculation values.
 
-## 4. Time Entry / Daily Task Management
-- [x] **Multi-Task Entry UI**: Improve `Tasks.tsx` to allow adding multiple tasks for the SAME day without repeated date selection.
-- [x] **HR Filters**: Verify/Add filters for HR in `Tasks.tsx` (Employee, Date, Project).
+## 4. User Roles & Permissions
+- [ ] **Restricted Role Creation**: Prevent HR from creating or editing users with Admin or HR roles. These options should be hidden in the UI for HR users.
 
-## 5. Meetings Module
-- [x] Verify Meeting URLs are only returned for invited employees in `getMyMeetings`.
-- [x] **Attendee Visibility**: Ensure only invited employees see the meeting on their dashboard.
+## 5. File Handling
+- [ ] **File Uploads**: Replace URL inputs with file upload fields for documents across the application. Use URL fields only for external links.
 
-## 6. Exit Management
-- [x] **Audit Resignations**: Log every status change (Pending -> Approved/Rejected) in `AuditLog`.
-- [x] Ensure Employee view-only after submission.
+## 6. Tasks Module
+- [ ] **Task Enhancements**:
+    - Add "Task Status" field.
+    - Add "Start Date" and "Start Time" (currently time only).
+    - Add "Task Edit" functionality.
+    - Implement auto-calculation of duration if "Override Hours" is not provided.
 
-## 7. Payroll & Payslip Automation
-- [x] **ESI Automation**: Add ESI (0.75% for employee) calculation logic to `generatePayroll`.
-- [x] **Configurability**: Implement per-employee PF/ESI % and Absent Deduction rules (amount/percentage).
-- [x] **Global Defaults**: Managed in Attendance Settings.
-- [x] **Auto Half-Day**: Automated marking of half-day for employees who don't clock out by a threshold time.
-- [x] **Onboarding Removal**: Simplified onboarding process where new employees are 'active' by default with password `emp123`.
-- [x] **Salary Summary for HR**: Provide a clear breakdown of automated vs manual parts in the Payroll UI.
-- [x] Ensure employees can only view/download their own slips.
+## 7. Dashboard & Widgets
+- [ ] **Meeting Widget**: Add a small "Upcoming Meeting" widget to the dashboard, visible only to invited employees.
 
-## 10. Deployment & Documentation
-- [x] Prepare source code documentation for transfer.
+## 8. Logs Module
+- [ ] **Visibility**: Make the "Logs" module visible to HR and Admin users.
+
+## 9. Session Management
+- [ ] **Extended Timeout**: Update session timeout to 12 days (from current 30 minutes).
 
 ---
 
-### Implementation Status: COMPLETED
-
-All finalized requirements for HR Harmony have been implemented, including:
-1. **Full Auditing**: Every critical administrative action is now logged.
-2. **Dynamic Branding**: Easily change company name and logo from one config file.
-3. **Enhanced Productivity Tools**: Multi-task entry and better HR filters.
-4. **Accurate Payroll**: Automated PF, ESI, and Tax calculations integrated with attendance, with per-employee customization.
-5. **Smart Attendance**: Auto half-day marking and configurable self-clock-in rules.
-6. **Simplified Employee Management**: Streamlined creation process with standard initial password.
+### Implementation Progress Tracking
+- [ ] 1. Leaves
+- [ ] 2. Profile Management
+- [ ] 3. Payroll
+- [ ] 4. User Roles & Permissions
+- [ ] 5. File Handling
+- [ ] 6. Tasks Module
+- [ ] 7. Dashboard & Widgets
+- [ ] 8. Logs Module
+- [ ] 9. Session Management

@@ -53,6 +53,10 @@ export default function Profile() {
   const [formData, setFormData] = useState({
     phone: '',
     address: '',
+    education: '',
+    aadhaar_number: '',
+    pan_number: '',
+    custom_fields: {} as any,
   });
   const [uploadData, setUploadData] = useState({
     documentType: '',
@@ -94,6 +98,10 @@ export default function Profile() {
       setFormData({
         phone: employee.phone || '',
         address: employee.address || '',
+        education: employee.education || '',
+        aadhaar_number: employee.aadhaar_number || '',
+        pan_number: employee.pan_number || '',
+        custom_fields: employee.custom_fields || {},
       });
     }
   }, [employee]);
@@ -344,6 +352,45 @@ export default function Profile() {
                       className="bg-muted"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Briefcase className="w-4 h-4 text-muted-foreground" />
+                      Education
+                    </Label>
+                    <Input
+                      value={formData.education}
+                      onChange={(e) => setFormData({ ...formData, education: e.target.value })}
+                      disabled={!isEditing}
+                      className={!isEditing ? 'bg-muted' : ''}
+                      placeholder="Highest Degree"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-muted-foreground" />
+                      Aadhaar Number
+                    </Label>
+                    <Input
+                      value={formData.aadhaar_number}
+                      onChange={(e) => setFormData({ ...formData, aadhaar_number: e.target.value })}
+                      disabled={!isEditing}
+                      className={!isEditing ? 'bg-muted' : ''}
+                      placeholder="12-digit number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-muted-foreground" />
+                      PAN Number
+                    </Label>
+                    <Input
+                      value={formData.pan_number}
+                      onChange={(e) => setFormData({ ...formData, pan_number: e.target.value })}
+                      disabled={!isEditing}
+                      className={!isEditing ? 'bg-muted' : ''}
+                      placeholder="ABCDE1234F"
+                    />
+                  </div>
                 </div>
                 <Separator />
                 <div className="space-y-2">
@@ -359,6 +406,32 @@ export default function Profile() {
                     rows={2}
                   />
                 </div>
+
+                {/* Custom Fields in Profile */}
+                {Object.keys(formData.custom_fields || {}).length > 0 && (
+                  <>
+                    <Separator />
+                    <div className="space-y-4">
+                      <Label className="text-sm font-bold">Additional Information</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                        {Object.entries(formData.custom_fields || {}).map(([key, value]: [string, any]) => (
+                          <div key={key} className="space-y-2">
+                            <Label className="capitalize">{key.replace(/_/g, ' ')}</Label>
+                            <Input
+                              value={value}
+                              onChange={(e) => {
+                                const newFields = { ...formData.custom_fields, [key]: e.target.value };
+                                setFormData({ ...formData, custom_fields: newFields });
+                              }}
+                              disabled={!isEditing}
+                              className={!isEditing ? 'bg-muted' : ''}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

@@ -15,7 +15,7 @@ export const logTask = async (req: AuthRequest, res: Response): Promise<void> =>
         start_time,
         end_time,
         hours_spent: hours_spent || 0,
-        status: status || 'completed',
+        status: status || 'pending',
     });
 
     res.status(201).json({

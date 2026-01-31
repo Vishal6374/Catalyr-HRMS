@@ -19,7 +19,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, FileText, Eye, Download, Pencil, Trash2, Link as LinkIcon } from 'lucide-react';
+import { Plus, Search, FileText, Eye, Download, Pencil, Trash2, Link as LinkIcon, Upload } from 'lucide-react';
+import { useRef } from 'react';
 import { format } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { policyService } from '@/services/apiService';
@@ -44,6 +45,8 @@ export default function Policies() {
     document_url: '',
     is_active: true
   });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -90,6 +93,27 @@ export default function Policies() {
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to delete policy'),
   });
 
+  const uploadMutation = useMutation({
+    mutationFn: policyService.uploadDocument,
+    onSuccess: (response) => {
+      setFormData(prev => ({ ...prev, document_url: response.data.url }));
+      toast.success('Document uploaded successfully');
+      setIsUploading(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to upload document');
+      setIsUploading(false);
+    },
+  });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsUploading(true);
+      uploadMutation.mutate(file);
+    }
+  };
+
   const resetForm = () => {
     setSelectedPolicy(null);
     setFormData({
@@ -135,6 +159,10 @@ export default function Policies() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.document_url) {
+      toast.error('Please upload a policy document');
+      return;
+    }
     if (selectedPolicy) {
       updateMutation.mutate({ id: selectedPolicy.id, data: formData });
     } else {
@@ -341,17 +369,42 @@ export default function Policies() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="document_url">Document URL</Label>
-                <div className="relative">
-                  <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="document_url"
-                    value={formData.document_url}
-                    onChange={(e) => setFormData({ ...formData, document_url: e.target.value })}
-                    placeholder="https://..."
-                    className="pl-9"
+                <Label>Policy Document</Label>
+                <div
+                  className="border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                    onChange={handleFileChange}
                   />
+                  {isUploading ? (
+                    <Loader size="default" />
+                  ) : formData.document_url ? (
+                    <div className="flex items-center gap-2 text-success font-medium">
+                      <FileText className="w-6 h-6" />
+                      <span>Document Uploaded</span>
+                      <Eye className="w-4 h-4 ml-2 text-muted-foreground hover:text-primary" onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(formData.document_url, '_blank');
+                      }} />
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="w-8 h-8 text-muted-foreground" />
+                      <p className="text-sm font-medium">Click to upload document</p>
+                      <p className="text-xs text-muted-foreground">PDF, DOC, DOCX or Images (Max 10MB)</p>
+                    </>
+                  )}
                 </div>
+                {formData.document_url && (
+                  <p className="text-[10px] text-muted-foreground truncate max-w-full italic">
+                    File: {formData.document_url.split('/').pop()}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description (Optional)</Label>

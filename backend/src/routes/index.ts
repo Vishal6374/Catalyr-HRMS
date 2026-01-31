@@ -21,6 +21,7 @@ import taskLogRoutes from './taskLogRoutes';
 import meetingRoutes from './meetingRoutes';
 
 import systemSettingsRoutes from './systemSettingsRoutes';
+import auditLogRoutes from './auditLogRoutes';
 
 const router = express.Router();
 
@@ -45,6 +46,7 @@ router.use('/resignations', resignationRoutes);
 router.use('/regularization', regularizationRoutes);
 router.use('/tasks', taskLogRoutes);
 router.use('/meetings', meetingRoutes);
+router.use('/audit-logs', auditLogRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {

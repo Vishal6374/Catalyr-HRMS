@@ -112,7 +112,7 @@ export const processPayroll = async (req: AuthRequest, res: Response): Promise<v
 
         // Calculate LOP (Loss of Pay)
         const dailySalary = employee.salary / totalDays;
-        const lop = absentDays * dailySalary;
+        const lop = Math.round(absentDays * dailySalary);
 
         // Get bonus and deductions for this employee
         const bonus = bonuses?.[employeeId] || 0;
@@ -131,8 +131,8 @@ export const processPayroll = async (req: AuthRequest, res: Response): Promise<v
             esi = Math.round(grossSalary * 0.0075 * 100) / 100;
         }
 
-        const totalDeductions = lop + otherDeductions + pf + esi;
-        const netSalary = grossSalary - totalDeductions;
+        const totalDeductions = Math.round(lop + otherDeductions + pf + esi);
+        const netSalary = Math.round(grossSalary - totalDeductions);
 
         // Create salary slip
         const slip = await SalarySlip.create({
@@ -304,7 +304,7 @@ export const previewPayroll = async (req: AuthRequest, res: Response): Promise<v
         const absentDays = attendance.filter(a => a.status === 'absent').length;
 
         const dailySalary = employee.salary / totalDays;
-        const lop = absentDays * dailySalary;
+        const lop = Math.round(absentDays * dailySalary);
 
         const basicSalary = employee.salary;
         const grossSalary = basicSalary; // For preview assume no bonus/other additions
@@ -318,7 +318,7 @@ export const previewPayroll = async (req: AuthRequest, res: Response): Promise<v
             esi = Math.round(grossSalary * 0.0075 * 100) / 100;
         }
 
-        const totalDeductions = lop + pf + esi;
+        const totalDeductions = Math.round(lop + pf + esi);
 
         previews.push({
             employee_id: employeeId,
@@ -334,7 +334,7 @@ export const previewPayroll = async (req: AuthRequest, res: Response): Promise<v
             pf,
             esi,
             gross_salary: grossSalary,
-            net_salary: grossSalary - totalDeductions,
+            net_salary: Math.round(grossSalary - totalDeductions),
         });
     }
 

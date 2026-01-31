@@ -114,6 +114,10 @@ export const createEmployee = async (req: AuthRequest, res: Response): Promise<v
         esi_percentage,
         absent_deduction_type,
         absent_deduction_value,
+        education,
+        aadhaar_number,
+        pan_number,
+        custom_fields,
     } = req.body;
 
     const PayrollSettings = (await import('../models/PayrollSettings')).default;
@@ -122,6 +126,11 @@ export const createEmployee = async (req: AuthRequest, res: Response): Promise<v
 
     // Generate employee ID
     const employee_id = await generateEmployeeId();
+
+    // Security: HR cannot create HR/Admin roles
+    if (req.user?.role === 'hr' && (role === 'admin' || role === 'hr')) {
+        throw new AppError(403, 'HR Administrator cannot create System Admin or HR roles');
+    }
 
     // Create user
     const employee = await User.create({
@@ -147,6 +156,10 @@ export const createEmployee = async (req: AuthRequest, res: Response): Promise<v
         account_number,
         ifsc_code,
         branch_name,
+        education,
+        aadhaar_number,
+        pan_number,
+        custom_fields,
     });
 
     // Create default leave balances
@@ -199,6 +212,10 @@ export const updateEmployee = async (req: AuthRequest, res: Response): Promise<v
         absent_deduction_value,
         termination_date,
         termination_reason,
+        education,
+        aadhaar_number,
+        pan_number,
+        custom_fields,
     } = req.body;
 
 
@@ -217,6 +234,11 @@ export const updateEmployee = async (req: AuthRequest, res: Response): Promise<v
         if (diffInHours > 48) {
             throw new AppError(403, 'Profile editing is locked after 48 hours of onboarding. Please contact HR for updates.');
         }
+    }
+
+    // Security: HR cannot promote to HR/Admin roles
+    if (req.user?.role === 'hr' && (role === 'admin' || role === 'hr') && role !== employee.role) {
+        throw new AppError(403, 'HR Administrator cannot assign System Admin or HR roles');
     }
 
     // Update allowed fields
@@ -241,6 +263,10 @@ export const updateEmployee = async (req: AuthRequest, res: Response): Promise<v
     if (absent_deduction_value !== undefined) employee.absent_deduction_value = absent_deduction_value === '' ? null : absent_deduction_value;
     if (termination_date !== undefined) employee.termination_date = termination_date === '' ? null : termination_date;
     if (termination_reason !== undefined) employee.termination_reason = termination_reason;
+    if (education !== undefined) employee.education = education;
+    if (aadhaar_number !== undefined) employee.aadhaar_number = aadhaar_number;
+    if (pan_number !== undefined) employee.pan_number = pan_number;
+    if (custom_fields !== undefined) employee.custom_fields = custom_fields;
 
     // If status is changed to terminated, clear sensitive details
     if (status === 'terminated') {

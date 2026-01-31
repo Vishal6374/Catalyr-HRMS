@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
-import { LayoutDashboard, Users, Building2, Briefcase, CalendarCheck, Wallet, CalendarDays, Receipt, MessageSquareWarning, FileText, CalendarRange, User, LogOut, ChevronLeft, ChevronRight, ClipboardList, Video, UserMinus, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, Briefcase, CalendarCheck, Wallet, CalendarDays, Receipt, MessageSquareWarning, FileText, CalendarRange, User, LogOut, ChevronLeft, ChevronRight, ClipboardList, Video, UserMinus, Settings, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -24,6 +24,7 @@ const navItems = [
   { title: 'Holidays', href: '/holidays', icon: CalendarRange },
   { title: 'Resignations', href: '/resignations', icon: UserMinus, hrOnly: true },
   { title: 'Profile', href: '/profile', icon: User },
+  { title: 'Logs', href: '/logs', icon: History, hrOnly: true },
   { title: 'Customization', href: '/system-customization', icon: Settings, adminOnly: true },
 ];
 

@@ -46,6 +46,8 @@ export default function Leaves() {
     end_date: '',
     reason: '',
   });
+  const [isSingleDay, setIsSingleDay] = useState(false);
+  const [editingLeave, setEditingLeave] = useState<any>(null);
 
   // Leave Type states
   const [isTypeDialogOpen, setIsTypeDialogOpen] = useState(false);
@@ -182,14 +184,69 @@ export default function Leaves() {
       queryClient.invalidateQueries({ queryKey: ['leave-balances'] });
       setIsDialogOpen(false);
       toast.success('Leave application submitted');
-      setFormData({ leave_type: 'sick', start_date: '', end_date: '', reason: '' });
+      resetLeaveForm();
     },
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to apply for leave'),
   });
 
+  const updateLeaveMutation = useMutation({
+    mutationFn: ({ id, data }: any) => leaveService.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leaves'] });
+      queryClient.invalidateQueries({ queryKey: ['leave-balances'] });
+      setIsDialogOpen(false);
+      toast.success('Leave updated successfully');
+      resetLeaveForm();
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to update leave'),
+  });
+
+  const deleteLeaveMutation = useMutation({
+    mutationFn: leaveService.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leaves'] });
+      queryClient.invalidateQueries({ queryKey: ['leave-balances'] });
+      toast.success('Leave request deleted');
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to delete leave'),
+  });
+
+  const resetLeaveForm = () => {
+    setFormData({ leave_type: 'sick', start_date: '', end_date: '', reason: '' });
+    setEditingLeave(null);
+    setIsSingleDay(false);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    applyMutation.mutate(formData);
+    const data = { ...formData };
+    if (isSingleDay) {
+      data.end_date = data.start_date;
+    }
+
+    if (editingLeave) {
+      updateLeaveMutation.mutate({ id: editingLeave.id, data });
+    } else {
+      applyMutation.mutate(data);
+    }
+  };
+
+  const handleEditLeave = (leave: any) => {
+    setEditingLeave(leave);
+    setFormData({
+      leave_type: leave.leave_type,
+      start_date: leave.start_date ? format(new Date(leave.start_date), 'yyyy-MM-dd') : '',
+      end_date: leave.end_date ? format(new Date(leave.end_date), 'yyyy-MM-dd') : '',
+      reason: leave.reason,
+    });
+    setIsSingleDay(leave.start_date === leave.end_date);
+    setIsDialogOpen(true);
+  };
+
+  const handleDeleteLeave = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this leave request?')) {
+      deleteLeaveMutation.mutate(id);
+    }
   };
 
   const handleUpdateLimits = (e: React.FormEvent) => {
@@ -310,6 +367,20 @@ export default function Leaves() {
     },
     { key: 'reason', header: 'Reason', cell: (leave) => <p className="text-sm text-muted-foreground">{leave.reason}</p> },
     { key: 'status', header: 'Status', cell: (leave) => <StatusBadge status={leave.status} /> },
+    {
+      key: 'actions',
+      header: '',
+      cell: (leave) => leave.status === 'pending' ? (
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => handleEditLeave(leave)}>
+            <Edit2 className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteLeave(leave.id)}>
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      ) : null,
+    },
   ];
 
   const typeColumns: Column<LeaveType>[] = [
@@ -507,13 +578,28 @@ export default function Leaves() {
         )}
 
         {/* Apply Leave Dialog */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) resetLeaveForm();
+        }}>
           <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Apply for Leave</DialogTitle>
-              <DialogDescription>Submit a new leave request.</DialogDescription>
+              <DialogTitle>{editingLeave ? 'Edit Leave Request' : 'Apply for Leave'}</DialogTitle>
+              <DialogDescription>{editingLeave ? 'Update your leave request details.' : 'Submit a new leave request.'}</DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div className="space-y-0.5">
+                  <Label htmlFor="single-day">Single Day Leave</Label>
+                  <p className="text-xs text-muted-foreground">Toggle for one day leave request</p>
+                </div>
+                <Switch
+                  id="single-day"
+                  checked={isSingleDay}
+                  onCheckedChange={setIsSingleDay}
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="type">Leave Type</Label>
                 <Select value={formData.leave_type} onValueChange={(val) => setFormData({ ...formData, leave_type: val })}>
@@ -534,15 +620,17 @@ export default function Leaves() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className={cn("grid gap-4", isSingleDay ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2")}>
                 <div className="space-y-2">
-                  <Label>Start Date</Label>
+                  <Label>{isSingleDay ? 'Date' : 'Start Date'}</Label>
                   <Input type="date" value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} required />
                 </div>
-                <div className="space-y-2">
-                  <Label>End Date</Label>
-                  <Input type="date" value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} required />
-                </div>
+                {!isSingleDay && (
+                  <div className="space-y-2">
+                    <Label>End Date</Label>
+                    <Input type="date" value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} required />
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Reason</Label>
@@ -550,7 +638,9 @@ export default function Leaves() {
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={applyMutation.isPending}>{applyMutation.isPending ? 'Submitting...' : 'Submit Request'}</Button>
+                <Button type="submit" disabled={applyMutation.isPending || updateLeaveMutation.isPending}>
+                  {(applyMutation.isPending || updateLeaveMutation.isPending) ? 'Processing...' : (editingLeave ? 'Update Request' : 'Submit Request')}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>

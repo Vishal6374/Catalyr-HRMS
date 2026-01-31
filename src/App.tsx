@@ -25,6 +25,7 @@ import Resignations from "./pages/Resignations";
 import Tasks from "./pages/Tasks";
 import Meetings from "./pages/Meetings";
 import Profile from "./pages/Profile";
+import Logs from "./pages/Logs";
 import SystemCustomization from "./pages/SystemCustomization";
 import NotFound from "./pages/NotFound";
 
@@ -89,6 +90,7 @@ function AppRoutes() {
       <Route path="/holidays" element={<ProtectedRoute><Holidays /></ProtectedRoute>} />
       <Route path="/resignations" element={<ProtectedRoute><Resignations /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+      <Route path="/logs" element={<ProtectedRoute><Logs /></ProtectedRoute>} />
 
       {/* Admin Only Routes */}
       <Route path="/system-customization" element={

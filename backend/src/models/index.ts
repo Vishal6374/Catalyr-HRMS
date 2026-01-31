@@ -21,15 +21,13 @@ import Meeting from './Meeting';
 import LeaveType from './LeaveType';
 import PayrollSettings from './PayrollSettings';
 import SystemSettings from './SystemSettings';
-
-// Temporarily disabled to debug server crash
-// import SalaryStructure from './SalaryStructure';
-// import PayGroup from './PayGroup';
-// import TaxSlab from './TaxSlab';
-// import InvestmentDeclaration from './InvestmentDeclaration';
-// import LoanAdvance from './LoanAdvance';
-// import FFSettlement from './FFSettlement';
-// import PayrollAudit from './PayrollAudit';
+import SalaryStructure from './SalaryStructure';
+import PayGroup from './PayGroup';
+import TaxSlab from './TaxSlab';
+import InvestmentDeclaration from './InvestmentDeclaration';
+import LoanAdvance from './LoanAdvance';
+import FFSettlement from './FFSettlement';
+import PayrollAudit from './PayrollAudit';
 
 // Define all model relationships
 
@@ -117,6 +115,25 @@ User.hasMany(TaskLog, { foreignKey: 'employee_id', as: 'taskLogs', constraints: 
 // Meeting - User relationships
 Meeting.belongsTo(User, { foreignKey: 'created_by', as: 'creator', constraints: false });
 
+// PayGroup - SalaryStructure relationship
+PayGroup.belongsTo(SalaryStructure, { foreignKey: 'salary_structure_id', as: 'salaryStructure', constraints: false });
+SalaryStructure.hasMany(PayGroup, { foreignKey: 'salary_structure_id', as: 'payGroups', constraints: false });
+
+// InvestmentDeclaration - User relationship
+InvestmentDeclaration.belongsTo(User, { foreignKey: 'employee_id', as: 'employee', constraints: false });
+User.hasMany(InvestmentDeclaration, { foreignKey: 'employee_id', as: 'investmentDeclarations', constraints: false });
+
+// LoanAdvance - User relationship
+LoanAdvance.belongsTo(User, { foreignKey: 'employee_id', as: 'employee', constraints: false });
+User.hasMany(LoanAdvance, { foreignKey: 'employee_id', as: 'loanAdvances', constraints: false });
+
+// FFSettlement - User relationship
+FFSettlement.belongsTo(User, { foreignKey: 'employee_id', as: 'employee', constraints: false });
+User.hasMany(FFSettlement, { foreignKey: 'employee_id', as: 'ffSettlements', constraints: false });
+
+// PayrollAudit - User relationship
+PayrollAudit.belongsTo(User, { foreignKey: 'changed_by', as: 'changedBy', constraints: false });
+
 export {
     User,
     Department,
@@ -141,6 +158,13 @@ export {
     LeaveType,
     PayrollSettings,
     SystemSettings,
+    SalaryStructure,
+    PayGroup,
+    TaxSlab,
+    InvestmentDeclaration,
+    LoanAdvance,
+    FFSettlement,
+    PayrollAudit,
 };
 
 export default {
@@ -167,4 +191,11 @@ export default {
     LeaveType,
     PayrollSettings,
     SystemSettings,
+    SalaryStructure,
+    PayGroup,
+    TaxSlab,
+    InvestmentDeclaration,
+    LoanAdvance,
+    FFSettlement,
+    PayrollAudit,
 };

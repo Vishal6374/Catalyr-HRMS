@@ -13,6 +13,15 @@ const startServer = async () => {
         await syncDatabase(false, false); // force=false, alter=false
         console.log('✅ Database sync completed successfully');
 
+        // Check if DB needs seeding
+        const User = (await import('./models/User')).default;
+        const userCount = await User.count();
+        if (userCount === 0) {
+            console.log('🌱 User table is empty, running auto-seeder...');
+            const { runMegaSeeder } = await import('./scripts/megaSeed');
+            await runMegaSeeder();
+        }
+
         // Initialize auto-absent scheduler
         scheduleAutoAbsent();
 
@@ -21,7 +30,7 @@ const startServer = async () => {
             console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║                                                            ║
-║   🚀 HRMS Backend Server                            ║
+║   🚀 Catalyr HRMS Backend Server                    ║
 ║                                                            ║
 ║   Environment: ${config.env.padEnd(43)}║
 ║   Port:        ${config.port.toString().padEnd(43)}║

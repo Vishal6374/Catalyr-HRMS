@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, DollarSign, FileText, Check, X, Paperclip } from 'lucide-react';
+import { Plus, Search, DollarSign, FileText, Check, X, Paperclip, Upload, Eye } from 'lucide-react';
+import { useRef } from 'react';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -32,6 +33,8 @@ export default function Reimbursements() {
   });
   const [remarks, setRemarks] = useState('');
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -80,6 +83,27 @@ export default function Reimbursements() {
     },
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to reject reimbursement'),
   });
+
+  const uploadMutation = useMutation({
+    mutationFn: reimbursementService.uploadReceipt,
+    onSuccess: (response) => {
+      setFormData(prev => ({ ...prev, receipt_url: response.data.url }));
+      toast.success('Receipt uploaded successfully');
+      setIsUploading(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to upload receipt');
+      setIsUploading(false);
+    },
+  });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsUploading(true);
+      uploadMutation.mutate(file);
+    }
+  };
 
   const resetForm = () => {
     setFormData({ amount: '', category: 'travel', description: '', receipt_url: '' });
@@ -381,13 +405,42 @@ export default function Reimbursements() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="receipt">Receipt URL (Optional)</Label>
-                <Input
-                  id="receipt"
-                  value={formData.receipt_url}
-                  onChange={(e) => setFormData({ ...formData, receipt_url: e.target.value })}
-                  placeholder="https://..."
-                />
+                <Label>Receipt / Invoice</Label>
+                <div
+                  className="border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    onChange={handleFileChange}
+                  />
+                  {isUploading ? (
+                    <Loader size="default" />
+                  ) : formData.receipt_url ? (
+                    <div className="flex items-center gap-2 text-success font-medium">
+                      <FileText className="w-6 h-6" />
+                      <span>Receipt Uploaded</span>
+                      <Eye className="w-4 h-4 ml-2 text-muted-foreground hover:text-primary" onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(formData.receipt_url, '_blank');
+                      }} />
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="w-8 h-8 text-muted-foreground" />
+                      <p className="text-sm font-medium">Click to upload receipt</p>
+                      <p className="text-xs text-muted-foreground">PDF or Images (Max 10MB)</p>
+                    </>
+                  )}
+                </div>
+                {formData.receipt_url && (
+                  <p className="text-[10px] text-muted-foreground truncate max-w-full italic">
+                    File: {formData.receipt_url.split('/').pop()}
+                  </p>
+                )}
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>

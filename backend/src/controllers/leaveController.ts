@@ -6,6 +6,8 @@ import AttendanceLog from '../models/AttendanceLog';
 import { AppError } from '../middleware/errorHandler';
 import { calculateWorkingDays } from '../utils/helpers';
 import { Op } from 'sequelize';
+import { logAudit } from '../utils/auditLogger';
+import User from '../models/User';
 
 export const getLeaveRequests = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
@@ -146,19 +148,24 @@ export const applyLeave = async (req: AuthRequest, res: Response): Promise<void>
             },
         });
 
-        // Auto-initialize balance if not found (using Limits)
+        // Auto-initialize balance if not found
         if (!balance) {
-            const LeaveLimit = (await import('../models/LeaveLimit')).default;
-            let limits = await LeaveLimit.findOne();
-            if (!limits) {
-                limits = await LeaveLimit.create({ casual_leave: 12, sick_leave: 12, earned_leave: 15 });
-            }
+            const LeaveType = (await import('../models/LeaveType')).default;
+            const typeDef = await LeaveType.findOne({ where: { name: { [Op.like]: leave_type } } });
 
-            let limit = 0;
-            if (leave_type === 'casual') limit = limits.casual_leave;
-            else if (leave_type === 'sick') limit = limits.sick_leave;
-            else if (leave_type === 'privilege' || leave_type === 'earned') limit = limits.earned_leave;
-            else limit = 15; // default fallback
+            let limit = 12; // default fallback
+            if (typeDef) {
+                limit = typeDef.default_days_per_year;
+            } else {
+                // Try legacy limits
+                const LeaveLimit = (await import('../models/LeaveLimit')).default;
+                let limits = await LeaveLimit.findOne();
+                if (limits) {
+                    if (leave_type === 'casual') limit = limits.casual_leave;
+                    else if (leave_type === 'sick') limit = limits.sick_leave;
+                    else if (leave_type === 'privilege' || leave_type === 'earned') limit = limits.earned_leave;
+                }
+            }
 
             balance = await LeaveBalance.create({
                 employee_id: employeeId,
@@ -272,6 +279,18 @@ export const approveLeave = async (req: AuthRequest, res: Response): Promise<voi
         leaveRequest.remarks = remarks;
         await leaveRequest.save();
 
+        const targetUser = await User.findByPk(leaveRequest.employee_id, { attributes: ['name'] });
+        await logAudit({
+            action: `Approved ${leaveRequest.leave_type} leave for ${targetUser?.name || 'Employee'}: ${leaveRequest.days} days`,
+            module: 'LEAVES',
+            entity_type: 'LEAVE_REQUEST',
+            entity_id: leaveRequest.id,
+            performed_by: req.user.id,
+            new_value: leaveRequest.toJSON(),
+            ip_address: req.ip,
+            user_agent: req.get('user-agent'),
+        });
+
         res.json({
             message: 'Leave approved successfully',
             leaveRequest,
@@ -323,6 +342,18 @@ export const rejectLeave = async (req: AuthRequest, res: Response): Promise<void
         leaveRequest.approved_at = new Date();
         leaveRequest.remarks = remarks;
         await leaveRequest.save();
+
+        const targetUser = await User.findByPk(leaveRequest.employee_id, { attributes: ['name'] });
+        await logAudit({
+            action: `Rejected ${leaveRequest.leave_type} leave for ${targetUser?.name || 'Employee'}`,
+            module: 'LEAVES',
+            entity_type: 'LEAVE_REQUEST',
+            entity_id: leaveRequest.id,
+            performed_by: req.user.id,
+            new_value: leaveRequest.toJSON(),
+            ip_address: req.ip,
+            user_agent: req.get('user-agent'),
+        });
 
         res.json({
             message: 'Leave rejected',
@@ -382,6 +413,85 @@ export const cancelLeave = async (req: AuthRequest, res: Response): Promise<void
             res.status(error.statusCode).json({ message: error.message });
         } else {
             res.status(500).json({ message: 'Internal server error cancelling leave' });
+        }
+    }
+};
+
+export const updateLeave = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const { leave_type, start_date, end_date, reason } = req.body;
+
+        const leaveRequest = await LeaveRequest.findByPk(id as string);
+
+        if (!leaveRequest) {
+            throw new AppError(404, 'Leave request not found');
+        }
+
+        if (leaveRequest.employee_id !== req.user?.id) {
+            throw new AppError(403, 'You can only edit your own leave requests');
+        }
+
+        if (leaveRequest.status !== 'pending') {
+            throw new AppError(400, 'Cannot edit request once it is processed');
+        }
+
+        const startDate = new Date(start_date);
+        const endDate = new Date(end_date);
+        const days = calculateWorkingDays(startDate, endDate);
+
+        // Update fields
+        leaveRequest.leave_type = leave_type || leaveRequest.leave_type;
+        leaveRequest.start_date = startDate;
+        leaveRequest.end_date = endDate;
+        leaveRequest.days = days;
+        leaveRequest.reason = reason || leaveRequest.reason;
+
+        await leaveRequest.save();
+
+        res.json({
+            message: 'Leave request updated successfully',
+            leaveRequest,
+        });
+    } catch (error) {
+        console.error('Error in updateLeave:', error);
+        if (error instanceof AppError) {
+            res.status(error.statusCode).json({ message: error.message });
+        } else {
+            res.status(500).json({ message: 'Internal server error updating leave' });
+        }
+    }
+};
+
+export const deleteLeave = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        const leaveRequest = await LeaveRequest.findByPk(id as string);
+
+        if (!leaveRequest) {
+            throw new AppError(404, 'Leave request not found');
+        }
+
+        if (leaveRequest.employee_id !== req.user?.id && req.user?.role !== 'admin') {
+            throw new AppError(403, 'Permission denied');
+        }
+
+        if (leaveRequest.status !== 'pending' && req.user?.role !== 'admin') {
+            throw new AppError(400, 'Cannot delete request once it is processed');
+        }
+
+        await leaveRequest.destroy();
+
+        res.json({
+            message: 'Leave request deleted successfully',
+        });
+    } catch (error) {
+        console.error('Error in deleteLeave:', error);
+        if (error instanceof AppError) {
+            res.status(error.statusCode).json({ message: error.message });
+        } else {
+            res.status(500).json({ message: 'Internal server error deleting leave' });
         }
     }
 };

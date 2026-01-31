@@ -29,12 +29,12 @@ SystemSettings.init(
         company_name: {
             type: DataTypes.STRING,
             allowNull: false,
-            defaultValue: 'HR Harmony',
+            defaultValue: 'Catalyr',
         },
         site_title: {
             type: DataTypes.STRING,
             allowNull: false,
-            defaultValue: 'HR Harmony - HRM System',
+            defaultValue: 'Catalyr | HRMS',
         },
         company_logo_url: {
             type: DataTypes.STRING,

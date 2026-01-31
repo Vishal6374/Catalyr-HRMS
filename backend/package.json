@@ -1,7 +1,7 @@
 {
-  "name": "hr-harmony-backend",
+  "name": "catalyr-hrms-backend",
   "version": "1.0.0",
-  "description": "Backend API for HRMS",
+  "description": "Backend API for Catalyr HRMS",
   "main": "dist/server.js",
   "scripts": {
     "dev": "cross-env NODE_ENV=development nodemon src/server.ts",
@@ -10,7 +10,7 @@
     "start": "cross-env NODE_ENV=production node dist/server.js",
     "start:dev": "cross-env NODE_ENV=development node dist/server.js",
     "db:sync": "ts-node src/scripts/syncDb.ts",
-    "db:seed": "ts-node src/scripts/seedDb.ts"
+    "db:seed": "ts-node src/scripts/megaSeed.ts"
   },
   "keywords": [],
   "author": "",

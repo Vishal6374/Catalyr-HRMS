@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { Op } from 'sequelize';
+import User from '../models/User';
 import AttendanceLog from '../models/AttendanceLog';
 import { AppError } from '../middleware/errorHandler';
 import { calculateWorkHours, isWeekend } from '../utils/helpers';
@@ -195,8 +196,9 @@ export const markAttendance = async (req: AuthRequest, res: Response): Promise<v
         });
 
         if (isHRorAdmin) {
+            const targetUser = await User.findByPk(targetEmployeeId, { attributes: ['name'] });
             await logAudit({
-                action: 'MARK_MANUAL',
+                action: `Marked attendance for ${targetUser?.name || 'Employee'} as ${attendanceStatus} on ${attendanceDate}`,
                 module: 'ATTENDANCE',
                 entity_type: 'ATTENDANCE_LOG',
                 entity_id: attendance.id,
@@ -305,8 +307,9 @@ export const updateAttendance = async (req: AuthRequest, res: Response): Promise
             edit_reason: edit_reason || 'Manual edit by HR',
         });
 
+        const targetUser = await User.findByPk(attendance.employee_id, { attributes: ['name'] });
         await logAudit({
-            action: 'UPDATE_MANUAL',
+            action: `Updated attendance for ${targetUser?.name || 'Employee'} on ${attendance.date}`,
             module: 'ATTENDANCE',
             entity_type: 'ATTENDANCE_LOG',
             entity_id: attendance.id,

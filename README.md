@@ -1,4 +1,4 @@
-# HR Harmony
+# Catalyr HRMS
 
 A modern, comprehensive Human Resource Management System (HRMS) built for efficient workforce management.
 

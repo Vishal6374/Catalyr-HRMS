@@ -131,7 +131,7 @@ export default function Complaints() {
       ),
     },
     { key: 'priority', header: 'Priority', cell: (comp) => <span className="capitalize">{comp.priority}</span> },
-    { key: 'date', header: 'Date', cell: (comp) => <span className="text-sm text-muted-foreground">{format(new Date(comp.created_at), 'MMM d, yyyy')}</span> },
+    { key: 'date', header: 'Date', cell: (comp) => <span className="text-sm text-muted-foreground">{format(new Date(comp.created_at || Date.now()), 'MMM d, yyyy')}</span> },
     { key: 'status', header: 'Status', cell: (comp) => <StatusBadge status={comp.status} /> },
     {
       key: 'actions',
@@ -173,7 +173,7 @@ export default function Complaints() {
       ),
     },
     { key: 'priority', header: 'Priority', cell: (comp) => <span className="capitalize">{comp.priority}</span> },
-    { key: 'date', header: 'Date', cell: (comp) => <span className="text-sm text-muted-foreground">{format(new Date(comp.created_at), 'MMM d, yyyy')}</span> },
+    { key: 'date', header: 'Date', cell: (comp) => <span className="text-sm text-muted-foreground">{format(new Date(comp.created_at || Date.now()), 'MMM d, yyyy')}</span> },
     { key: 'status', header: 'Status', cell: (comp) => <StatusBadge status={comp.status} /> },
     {
       key: 'response',

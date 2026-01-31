@@ -33,12 +33,13 @@ export const calculateWorkingDays = (startDate: Date, endDate: Date): number => 
     let count = 0;
     const current = new Date(startDate);
 
-    while (current <= endDate) {
-        const day = current.getDay();
-        // Skip weekends (0 = Sunday, 6 = Saturday)
-        if (day !== 0 && day !== 6) {
-            count++;
-        }
+    // Set time to midnight for accurate comparison
+    current.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(0, 0, 0, 0);
+
+    while (current <= end) {
+        count++;
         current.setDate(current.getDate() + 1);
     }
 

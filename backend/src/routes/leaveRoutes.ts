@@ -12,5 +12,7 @@ router.post('/apply', authenticate, auditLog('leaves', 'apply'), asyncHandler(le
 router.post('/approve/:id', authenticate, requireHR, auditLog('leaves', 'approve'), asyncHandler(leaveController.approveLeave));
 router.post('/reject/:id', authenticate, requireHR, auditLog('leaves', 'reject'), asyncHandler(leaveController.rejectLeave));
 router.post('/cancel/:id', authenticate, auditLog('leaves', 'cancel'), asyncHandler(leaveController.cancelLeave));
+router.put('/:id', authenticate, auditLog('leaves', 'update'), asyncHandler(leaveController.updateLeave));
+router.delete('/:id', authenticate, auditLog('leaves', 'delete'), asyncHandler(leaveController.deleteLeave));
 
 export default router;

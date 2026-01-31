@@ -2,6 +2,16 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import Policy from '../models/Policy';
 import { AppError } from '../middleware/errorHandler';
+import { config } from '../config';
+
+export const uploadPolicyDocument = async (req: AuthRequest, res: Response): Promise<void> => {
+    if (!req.file) {
+        throw new AppError(400, 'No file uploaded');
+    }
+
+    const fileUrl = `${config.api.baseUrl}/uploads/documents/${req.file.filename}`;
+    res.json({ url: fileUrl });
+};
 
 export const getPolicies = async (req: AuthRequest, res: Response): Promise<void> => {
     const { category, is_active } = req.query;

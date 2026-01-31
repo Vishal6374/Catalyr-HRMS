@@ -3,6 +3,18 @@ import { AuthRequest } from '../middleware/auth';
 import Reimbursement from '../models/Reimbursement';
 import { AppError } from '../middleware/errorHandler';
 import { Op } from 'sequelize';
+import { config } from '../config';
+import { logAudit } from '../utils/auditLogger';
+import User from '../models/User';
+
+export const uploadReceipt = async (req: AuthRequest, res: Response): Promise<void> => {
+    if (!req.file) {
+        throw new AppError(400, 'No file uploaded');
+    }
+
+    const fileUrl = `${config.api.baseUrl}/uploads/documents/${req.file.filename}`;
+    res.json({ url: fileUrl });
+};
 
 export const getReimbursements = async (req: AuthRequest, res: Response): Promise<void> => {
     const { status, employee_id } = req.query;
@@ -96,6 +108,18 @@ export const approveReimbursement = async (req: AuthRequest, res: Response): Pro
     reimbursement.remarks = remarks;
     await reimbursement.save();
 
+    const targetUser = await User.findByPk(reimbursement.employee_id, { attributes: ['name'] });
+    await logAudit({
+        action: `Approved reimbursement for ${targetUser?.name || 'Employee'}: $${reimbursement.amount}`,
+        module: 'REIMBURSEMENTS',
+        entity_type: 'REIMBURSEMENT',
+        entity_id: reimbursement.id,
+        performed_by: req.user.id,
+        new_value: reimbursement.toJSON(),
+        ip_address: req.ip,
+        user_agent: req.get('user-agent'),
+    });
+
     res.json({
         message: 'Reimbursement approved successfully',
         reimbursement,
@@ -138,6 +162,18 @@ export const rejectReimbursement = async (req: AuthRequest, res: Response): Prom
     reimbursement.approved_at = new Date();
     reimbursement.remarks = remarks;
     await reimbursement.save();
+
+    const targetUser = await User.findByPk(reimbursement.employee_id, { attributes: ['name'] });
+    await logAudit({
+        action: `Rejected reimbursement for ${targetUser?.name || 'Employee'}: $${reimbursement.amount}`,
+        module: 'REIMBURSEMENTS',
+        entity_type: 'REIMBURSEMENT',
+        entity_id: reimbursement.id,
+        performed_by: req.user.id,
+        new_value: reimbursement.toJSON(),
+        ip_address: req.ip,
+        user_agent: req.get('user-agent'),
+    });
 
     res.json({
         message: 'Reimbursement rejected',

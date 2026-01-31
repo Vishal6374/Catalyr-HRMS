@@ -29,6 +29,13 @@ export interface UserAttributes {
     account_number?: string;
     ifsc_code?: string;
     branch_name?: string;
+    education?: string;
+    aadhaar_number?: string;
+    pan_number?: string;
+    custom_fields?: any;
+    tax_regime?: 'new' | 'old';
+    bank_account_number?: string;
+    bank_ifsc?: string;
     created_at?: Date;
     updated_at?: Date;
 }
@@ -62,6 +69,13 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
     public account_number?: string;
     public ifsc_code?: string;
     public branch_name?: string;
+    public education?: string;
+    public aadhaar_number?: string;
+    public pan_number?: string;
+    public custom_fields?: any;
+    public tax_regime?: 'new' | 'old';
+    public bank_account_number?: string;
+    public bank_ifsc?: string;
 
     // Associations
     public readonly department?: any; // To avoid circular dependency with Department model type
@@ -196,6 +210,36 @@ User.init(
         },
         branch_name: {
             type: DataTypes.STRING(100),
+            allowNull: true,
+        },
+        education: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
+        },
+        aadhaar_number: {
+            type: DataTypes.STRING(20),
+            allowNull: true,
+        },
+        pan_number: {
+            type: DataTypes.STRING(20),
+            allowNull: true,
+        },
+        custom_fields: {
+            type: DataTypes.JSON,
+            allowNull: true,
+            defaultValue: {},
+        },
+        tax_regime: {
+            type: DataTypes.ENUM('new', 'old'),
+            allowNull: true,
+            defaultValue: 'new',
+        },
+        bank_account_number: {
+            type: DataTypes.STRING(50),
+            allowNull: true,
+        },
+        bank_ifsc: {
+            type: DataTypes.STRING(20),
             allowNull: true,
         },
     },

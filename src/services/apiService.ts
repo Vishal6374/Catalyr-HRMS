@@ -103,6 +103,10 @@ export const leaveService = {
         api.post(`/leaves/reject/${id}`, { remarks }),
     cancel: (id: string) =>
         api.post(`/leaves/cancel/${id}`),
+    update: (id: string, data: any) =>
+        api.put(`/leaves/${id}`, data),
+    delete: (id: string) =>
+        api.delete(`/leaves/${id}`),
 };
 
 // Leave Limits Services
@@ -246,6 +250,13 @@ export const reimbursementService = {
         api.get('/reimbursements', { params }),
     submit: (data: any) =>
         api.post('/reimbursements/submit', data),
+    uploadReceipt: (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return api.post('/reimbursements/upload-receipt', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+    },
     approve: (id: string, remarks?: string) =>
         api.post(`/reimbursements/approve/${id}`, { remarks }),
     reject: (id: string, remarks: string) =>
@@ -274,6 +285,13 @@ export const policyService = {
         api.post('/policies', data),
     update: (id: string, data: any) =>
         api.put(`/policies/${id}`, data),
+    uploadDocument: (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return api.post('/policies/upload-document', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+    },
     delete: (id: string) =>
         api.delete(`/policies/${id}`),
 };
@@ -364,4 +382,12 @@ export const meetingService = {
         api.put(`/meetings/${id}`, data),
     delete: (id: string) =>
         api.delete(`/meetings/${id}`),
+};
+
+// Audit Log Services
+export const auditLogService = {
+    getAll: (params?: any) =>
+        api.get('/audit-logs', { params }),
+    getById: (id: string) =>
+        api.get(`/audit-logs/${id}`),
 };

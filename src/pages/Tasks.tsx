@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -31,9 +31,10 @@ export default function Tasks() {
         hours_spent: '',
         start_time: '09:00',
         end_time: '10:00',
-        status: 'completed',
+        status: 'pending',
         date: format(new Date(), 'yyyy-MM-dd'),
     });
+    const [editingTask, setEditingTask] = useState<any>(null);
     const [employeeFilter, setEmployeeFilter] = useState('all');
     const [selectedTask, setSelectedTask] = useState<any>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -42,6 +43,20 @@ export default function Tasks() {
     const [activeTab, setActiveTab] = useState(isHR ? 'team' : 'personal');
 
     const queryClient = useQueryClient();
+
+    // Auto-calculate hours
+    useEffect(() => {
+        if (taskData.start_time && taskData.end_time) {
+            const [startH, startM] = taskData.start_time.split(':').map(Number);
+            const [endH, endM] = taskData.end_time.split(':').map(Number);
+            const startMinutes = startH * 60 + startM;
+            const endMinutes = endH * 60 + endM;
+            if (endMinutes > startMinutes) {
+                const diffHours = (endMinutes - startMinutes) / 60;
+                setTaskData(prev => ({ ...prev, hours_spent: diffHours.toFixed(1) }));
+            }
+        }
+    }, [taskData.start_time, taskData.end_time]);
 
     const { data: tasks = [], isLoading } = useQuery({
         queryKey: ['tasks', selectedDate, activeTab, employeeFilter],
@@ -74,22 +89,26 @@ export default function Tasks() {
                 start_time: data.start_time ? `${dateStr}T${data.start_time}:00` : undefined,
                 end_time: data.end_time ? `${dateStr}T${data.end_time}:00` : undefined,
             };
+            if (editingTask) return taskLogService.update(editingTask.id, payload);
             return taskLogService.logTask(payload);
         },
         onSuccess: (_data, variables: any) => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
             if (!variables.keepOpen) {
                 setIsAddDialogOpen(false);
+                setEditingTask(null);
             }
-            setTaskData(prev => ({
-                ...prev,
-                task_name: '',
-                description: '',
-                hours_spent: '',
-            }));
-            toast.success('Task logged successfully');
+            if (!editingTask) {
+                setTaskData(prev => ({
+                    ...prev,
+                    task_name: '',
+                    description: '',
+                    hours_spent: '',
+                }));
+            }
+            toast.success(editingTask ? 'Task updated successfully' : 'Task logged successfully');
         },
-        onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to log task'),
+        onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to save task'),
     });
 
 
@@ -197,12 +216,23 @@ export default function Tasks() {
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-[500px]">
                                 <DialogHeader>
-                                    <DialogTitle>Log Daily Task</DialogTitle>
+                                    <DialogTitle>{editingTask ? 'Edit Task' : 'Log Daily Task'}</DialogTitle>
                                     <DialogDescription>
-                                        Record your work activity for better tracking and productivity.
+                                        {editingTask ? 'Update your task details for better tracking.' : 'Record your work activity for better tracking and productivity.'}
                                     </DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
+                                    <div className="space-y-2">
+                                        <Label>Current Status*</Label>
+                                        <Select value={taskData.status} onValueChange={val => setTaskData({ ...taskData, status: val })}>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="pending">Pending</SelectItem>
+                                                <SelectItem value="on-progress">On Progress</SelectItem>
+                                                <SelectItem value="completed">Completed</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                     <div className="space-y-2">
                                         <Label>Task Title*</Label>
                                         <Input
@@ -261,20 +291,25 @@ export default function Tasks() {
                                     </div>
                                 </div>
                                 <DialogFooter className="flex flex-col sm:flex-row gap-2">
-                                    <Button variant="ghost" className="sm:mr-auto" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => addTaskMutation.mutate({ ...taskData, keepOpen: true })}
-                                        disabled={addTaskMutation.isPending || !taskData.task_name || !taskData.description}
-                                    >
-                                        Save & Add Another
-                                    </Button>
+                                    <Button variant="ghost" className="sm:mr-auto" onClick={() => {
+                                        setIsAddDialogOpen(false);
+                                        setEditingTask(null);
+                                    }}>Cancel</Button>
+                                    {!editingTask && (
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => addTaskMutation.mutate({ ...taskData, keepOpen: true })}
+                                            disabled={addTaskMutation.isPending || !taskData.task_name || !taskData.description}
+                                        >
+                                            Save & Add Another
+                                        </Button>
+                                    )}
                                     <Button
                                         onClick={() => addTaskMutation.mutate(taskData)}
                                         disabled={addTaskMutation.isPending || !taskData.task_name || !taskData.description}
                                     >
                                         {addTaskMutation.isPending && <Loader size="small" variant="white" className="mr-2" />}
-                                        Complete
+                                        {editingTask ? 'Update Task' : 'Complete'}
                                     </Button>
                                 </DialogFooter>
                             </DialogContent>
@@ -409,22 +444,36 @@ export default function Tasks() {
 
                                 {/* Footer Actions */}
                                 <div className="pt-6 border-t space-y-3">
-                                    {(isHR && selectedTask.status !== 'approved') && (
+                                    {(isHR || selectedTask.employee_id === user?.id) && (
+                                        <Button
+                                            className="w-full"
+                                            onClick={() => {
+                                                setEditingTask(selectedTask);
+                                                setTaskData({
+                                                    task_name: selectedTask.task_name,
+                                                    description: selectedTask.description,
+                                                    hours_spent: selectedTask.hours_spent.toString(),
+                                                    start_time: selectedTask.start_time ? format(new Date(selectedTask.start_time), 'HH:mm') : '09:00',
+                                                    end_time: selectedTask.end_time ? format(new Date(selectedTask.end_time), 'HH:mm') : '10:00',
+                                                    status: selectedTask.status,
+                                                    date: selectedTask.date,
+                                                });
+                                                setIsDetailsOpen(false);
+                                                setIsAddDialogOpen(true);
+                                            }}
+                                        >
+                                            <Edit2 className="w-4 h-4 mr-2" /> Edit Task
+                                        </Button>
+                                    )}
+
+                                    {isHR && !['completed'].includes(selectedTask.status) && (
                                         <div className="flex gap-3">
                                             <Button
                                                 className="flex-1 bg-success hover:bg-success/90 text-white border-none"
-                                                onClick={() => updateTaskStatusMutation.mutate({ id: selectedTask.id, status: 'approved' })}
+                                                onClick={() => updateTaskStatusMutation.mutate({ id: selectedTask.id, status: 'completed' })}
                                                 disabled={updateTaskStatusMutation.isPending}
                                             >
-                                                {updateTaskStatusMutation.isPending ? <Loader size="small" variant="white" /> : <><CheckCircle2 className="w-4 h-4 mr-2" /> Approve</>}
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                className="flex-1 text-destructive border-destructive/20 hover:bg-destructive/10"
-                                                onClick={() => updateTaskStatusMutation.mutate({ id: selectedTask.id, status: 'rejected' })}
-                                                disabled={updateTaskStatusMutation.isPending}
-                                            >
-                                                {updateTaskStatusMutation.isPending ? <Loader size="small" /> : <><Trash2 className="w-4 h-4 mr-2" /> Reject</>}
+                                                {updateTaskStatusMutation.isPending ? <Loader size="small" variant="white" /> : <><CheckCircle2 className="w-4 h-4 mr-2" /> Mark Completed</>}
                                             </Button>
                                         </div>
                                     )}
