@@ -1,16 +1,20 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Users, Building2, Briefcase, CalendarCheck, Wallet, CalendarDays, Receipt, MessageSquareWarning, FileText, CalendarRange, User, LogOut, X } from 'lucide-react';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
+import { LayoutDashboard, Users, Building2, Briefcase, CalendarCheck, Wallet, CalendarDays, Receipt, MessageSquareWarning, FileText, CalendarRange, User, LogOut, X, ClipboardList, Video, UserMinus, Settings, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { BRANDING } from '@/config/branding';
 
 const navItems = [
     { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { title: 'Departments', href: '/departments', icon: Building2, hrOnly: true },
     { title: 'Designations', href: '/designations', icon: Briefcase, hrOnly: true },
     { title: 'Employees', href: '/employees', icon: Users, hrOnly: true },
+    { title: 'Tasks', href: '/tasks', icon: ClipboardList },
+    { title: 'Meetings', href: '/meetings', icon: Video },
     { title: 'Attendance', href: '/attendance', icon: CalendarCheck },
     { title: 'Payroll', href: '/payroll', icon: Wallet },
     { title: 'Leaves', href: '/leaves', icon: CalendarDays },
@@ -18,7 +22,10 @@ const navItems = [
     { title: 'Complaints', href: '/complaints', icon: MessageSquareWarning },
     { title: 'Policies', href: '/policies', icon: FileText },
     { title: 'Holidays', href: '/holidays', icon: CalendarRange },
+    { title: 'Resignations', href: '/resignations', icon: UserMinus, hrOnly: true },
     { title: 'Profile', href: '/profile', icon: User },
+    { title: 'Logs', href: '/logs', icon: History, hrOnly: true },
+    { title: 'Customization', href: '/system-customization', icon: Settings, adminOnly: true },
 ];
 
 interface MobileSidebarProps {
@@ -27,9 +34,18 @@ interface MobileSidebarProps {
 }
 
 export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
-    const { user, logout, isHR } = useAuth();
+    const { user, logout, isHR, isAdmin } = useAuth();
+    const { settings } = useSystemSettings();
     const location = useLocation();
-    const filteredNavItems = navItems.filter((item) => !item.hrOnly || isHR);
+
+    const filteredNavItems = navItems.filter((item) => {
+        if (item.adminOnly) return isAdmin;
+        if (item.hrOnly) return isHR;
+        return true;
+    });
+
+    const appName = settings?.company_name || BRANDING.name;
+    const appLogo = settings?.sidebar_logo_url || settings?.company_logo_url || BRANDING.logo;
 
     const handleLogout = () => {
         logout();
@@ -44,8 +60,8 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
                     <SheetHeader className="p-4 border-b border-primary/20">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <img src="/favicon.png" alt="Catalyr Logo" className="w-8 h-8 object-contain" />
-                                <SheetTitle className="font-bold text-primary-foreground text-xl">Catalyr HRMS</SheetTitle>
+                                <img src={appLogo} alt={`${appName} Logo`} className="w-8 h-8 object-contain" />
+                                <SheetTitle className="font-bold text-primary-foreground text-xl">{appName}</SheetTitle>
                             </div>
                             <Button
                                 variant="ghost"

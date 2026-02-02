@@ -2,6 +2,7 @@ import { ReactNode, useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { MobileSidebar } from './MobileSidebar';
 import { useSidebar } from '@/contexts/SidebarContext';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BRANDING } from '@/config/branding';
@@ -13,7 +14,11 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
   const { isCollapsed } = useSidebar();
+  const { settings } = useSystemSettings();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const appName = settings?.company_name || BRANDING.name;
+  const appLogo = settings?.sidebar_logo_url || settings?.company_logo_url || BRANDING.logo;
 
   return (
     <div className="min-h-screen bg-background">
@@ -28,8 +33,8 @@ export function MainLayout({ children }: MainLayoutProps) {
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-30 h-16 bg-primary border-b border-primary/20 flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
-          <img src={BRANDING.logo} alt={`${BRANDING.name} Logo`} className="w-8 h-8 object-contain" />
-          <span className="font-bold text-primary-foreground text-xl">{BRANDING.name}</span>
+          <img src={appLogo} alt={`${appName} Logo`} className="w-8 h-8 object-contain" />
+          <span className="font-bold text-primary-foreground text-xl">{appName}</span>
         </div>
         <Button
           variant="ghost"
