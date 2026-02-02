@@ -70,7 +70,7 @@ SystemSettings.init(
         payslip_header_name: {
             type: DataTypes.STRING,
             allowNull: false,
-            defaultValue: 'Tech Corp Inc.',
+            defaultValue: 'Catalyr Inc.',
         },
         payslip_logo_url: {
             type: DataTypes.STRING,

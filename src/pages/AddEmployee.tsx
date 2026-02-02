@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -41,6 +41,11 @@ export default function AddEmployee() {
     const isEdit = !!id;
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+
+    if (!authIsHR) {
+        return <Navigate to="/dashboard" replace />;
+    }
+
     const [currentStep, setCurrentStep] = useState(0);
 
     // Custom Fields Modal State

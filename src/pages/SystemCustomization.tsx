@@ -220,7 +220,7 @@ export default function SystemCustomization() {
                                         name="payslip_header_name"
                                         value={formData.payslip_header_name || ""}
                                         onChange={handleChange}
-                                        placeholder="Tech Corp Inc."
+                                        placeholder="Catalyr Inc."
                                     />
                                 </div>
                                 <FileUpload label="Payslip Logo" name="payslip_logo_url" currentUrl={formData.payslip_logo_url} />

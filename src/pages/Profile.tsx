@@ -29,14 +29,16 @@ import {
   Upload,
   FileText,
   Save,
-  Camera,
+  Pencil,
   Download,
   Trash2,
   Eye,
   LogOut,
   Clock,
   CheckCircle2,
-  X
+  X,
+  Info,
+  ExternalLink
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { PageLoader } from '@/components/ui/page-loader';
@@ -86,12 +88,12 @@ export default function Profile() {
   const latestResignation = myResignations[0];
   const hasActiveResignation = latestResignation && (latestResignation.status === 'pending' || latestResignation.status === 'approved');
 
-  // Calculate lock status
-  const createdAt = employee?.created_at ? new Date(employee.created_at) : new Date();
-  const hoursSinceCreation = (new Date().getTime() - createdAt.getTime()) / (1000 * 60 * 60);
-  const isTimeLocked = (user?.role === 'employee') && (hoursSinceCreation > 48);
-
-  const isLocked = employee?.onboarding_status === 'locked' || isTimeLocked;
+  // Calculate lock status - Disable edit 48 hours after joining date for employees
+  const joiningDate = employee?.date_of_joining ? new Date(employee.date_of_joining) : new Date();
+  const hoursSinceJoining = (new Date().getTime() - joiningDate.getTime()) / (1000 * 60 * 60);
+  const isAdminOrHR = user?.role === 'admin' || user?.role === 'hr';
+  const isTimeLocked = (user?.role === 'employee') && (hoursSinceJoining > 48);
+  const isLocked = !isAdminOrHR && (employee?.onboarding_status === 'locked' || isTimeLocked);
 
   useEffect(() => {
     if (employee) {
@@ -101,7 +103,9 @@ export default function Profile() {
         education: employee.education || '',
         aadhaar_number: employee.aadhaar_number || '',
         pan_number: employee.pan_number || '',
-        custom_fields: employee.custom_fields || {},
+        custom_fields: typeof employee.custom_fields === 'string'
+          ? JSON.parse(employee.custom_fields)
+          : (employee.custom_fields || {}),
       });
     }
   }, [employee]);
@@ -231,8 +235,8 @@ export default function Profile() {
                   <AvatarImage src={employee.avatar_url} alt={employee.name} />
                   <AvatarFallback className="text-2xl">{employee.name?.charAt(0)}</AvatarFallback>
                 </Avatar>
-                <button className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors">
-                  <Camera className="w-4 h-4" />
+                <button className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:bg-primary/90 transition-all hover:scale-110 active:scale-95">
+                  <Pencil className="w-4 h-4" />
                 </button>
               </div>
               <div className="flex-1">
@@ -306,7 +310,7 @@ export default function Profile() {
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm flex items-center gap-2 mb-4">
                     <CheckCircle2 className="w-4 h-4" />
                     {isTimeLocked
-                      ? "Profile editing is disabled 48 hours after onboarding. Contact HR for any changes."
+                      ? "Profile editing is disabled 48 hours after your joining date. Contact HR for any changes."
                       : "Your onboarding profile has been approved and locked. Contact HR for any changes."
                     }
                   </div>
@@ -411,23 +415,85 @@ export default function Profile() {
                 {Object.keys(formData.custom_fields || {}).length > 0 && (
                   <>
                     <Separator />
-                    <div className="space-y-4">
-                      <Label className="text-sm font-bold">Additional Information</Label>
+                    <div className="space-y-6 pt-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/20">
+                          <Info className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <Label className="text-base font-bold tracking-tight">Additional Information</Label>
+                          <p className="text-xs text-muted-foreground">Extra details and custom attributes</p>
+                        </div>
+                      </div>
+
+                      {/* Explicit Field for Experience Letter */}
+                      <div className="space-y-2 group">
+                        <Label className="text-sm font-semibold flex items-center gap-2 text-muted-foreground group-focus-within:text-primary transition-colors">
+                          <FileText className="w-4 h-4" />
+                          Experience Letter / Relieving Letter
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            value={formData.custom_fields['experience_letter'] || ''}
+                            onChange={(e) => {
+                              const newFields = { ...formData.custom_fields, ['experience_letter']: e.target.value };
+                              setFormData({ ...formData, custom_fields: newFields });
+                            }}
+                            disabled={!isEditing}
+                            className={cn(
+                              "transition-all duration-200 pl-4",
+                              !isEditing ? 'bg-muted/50 border-transparent shadow-none' : 'focus:ring-2 focus:ring-primary/20 border-primary/20'
+                            )}
+                            placeholder="Enter URL or reference to experience letter"
+                          />
+                          {formData.custom_fields['experience_letter'] && !isEditing && (
+                            <div className="mt-2">
+                              <Button variant="link" size="sm" className="p-0 h-auto gap-1 text-primary" asChild>
+                                <a href={formData.custom_fields['experience_letter']} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="w-3 h-3" /> View Letter
+                                </a>
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                        {Object.entries(formData.custom_fields || {}).map(([key, value]: [string, any]) => (
-                          <div key={key} className="space-y-2">
-                            <Label className="capitalize">{key.replace(/_/g, ' ')}</Label>
-                            <Input
-                              value={value}
-                              onChange={(e) => {
-                                const newFields = { ...formData.custom_fields, [key]: e.target.value };
-                                setFormData({ ...formData, custom_fields: newFields });
-                              }}
-                              disabled={!isEditing}
-                              className={!isEditing ? 'bg-muted' : ''}
-                            />
-                          </div>
-                        ))}
+                        {Object.entries(formData.custom_fields || {})
+                          .filter(([key, value]) => {
+                            // Filter out the experience letter (handled separately)
+                            if (key === 'experience_letter') return false;
+
+                            // Filter out numeric keys which usually indicate a string/array being parsed as object
+                            if (!isNaN(Number(key))) return false;
+
+                            // When NOT editing, only show fields that HAVE a value
+                            if (!isEditing && (!value || String(value).trim() === '')) return false;
+
+                            return true;
+                          })
+                          .map(([key, value]: [string, any]) => (
+                            <div key={key} className="space-y-2 group">
+                              <Label className="capitalize text-muted-foreground group-focus-within:text-primary transition-colors">
+                                {key.replace(/_/g, ' ')}
+                              </Label>
+                              <div className="relative">
+                                <Input
+                                  value={value}
+                                  onChange={(e) => {
+                                    const newFields = { ...formData.custom_fields, [key]: e.target.value };
+                                    setFormData({ ...formData, custom_fields: newFields });
+                                  }}
+                                  disabled={!isEditing}
+                                  className={cn(
+                                    "transition-all duration-200",
+                                    !isEditing ? 'bg-muted/50 border-transparent shadow-none' : 'focus:ring-2 focus:ring-primary/20'
+                                  )}
+                                  placeholder={`Enter ${key.replace(/_/g, ' ')}`}
+                                />
+                              </div>
+                            </div>
+                          ))}
                       </div>
                     </div>
                   </>
