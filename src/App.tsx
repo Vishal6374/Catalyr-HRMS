@@ -30,6 +30,11 @@ import Meetings from "./pages/Meetings";
 import Profile from "./pages/Profile";
 import Logs from "./pages/Logs";
 import SystemCustomization from "./pages/SystemCustomization";
+import Documentation from "./pages/Documentation";
+import APIReference from "./pages/APIReference";
+import HelpCenter from "./pages/HelpCenter";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -76,6 +81,13 @@ function AppRoutes() {
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
       <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
+
+      {/* Resource Pages - Public */}
+      <Route path="/documentation" element={<Documentation />} />
+      <Route path="/api-reference" element={<APIReference />} />
+      <Route path="/help-center" element={<HelpCenter />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+      <Route path="/terms-of-service" element={<TermsOfService />} />
 
       {/* Protected Routes */}
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

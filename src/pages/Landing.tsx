@@ -196,7 +196,7 @@ export default function Landing() {
                         <div className="flex items-center gap-6">
                             <a href="tel:+911234567890" className="flex items-center gap-2 hover:text-slate-300 transition-colors">
                                 <Phone className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline">+91 123 456 7890</span>
+                                <span className="hidden sm:inline">97917 57215</span>
                             </a>
                             <a href="mailto:catalyr06@gmail.com" className="flex items-center gap-2 hover:text-slate-300 transition-colors">
                                 <Mail className="w-3.5 h-3.5" />
@@ -456,14 +456,6 @@ export default function Landing() {
                                     </div>
                                     <h3 className="text-xl font-bold text-slate-900 mb-3">{capability.title}</h3>
                                     <p className="text-slate-600 leading-relaxed mb-4">{capability.description}</p>
-
-                                    {/* View workflow link - appears on hover */}
-                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                        <button className="flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-slate-900">
-                                            View workflow
-                                            <ArrowUpRight className="w-4 h-4" />
-                                        </button>
-                                    </div>
 
                                     {/* Subtle glow effect on hover */}
                                     <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${capability.color} opacity-0 group-hover:opacity-5 transition-opacity duration-300 pointer-events-none`} />
@@ -1079,11 +1071,11 @@ export default function Landing() {
                         <div>
                             <h3 className="font-semibold text-white mb-4 text-sm uppercase tracking-wider">Resources</h3>
                             <ul className="space-y-3 text-sm">
-                                <li><a href="#" className="text-slate-400 hover:text-white transition-colors hover:translate-x-1 inline-block">Documentation</a></li>
-                                <li><a href="#" className="text-slate-400 hover:text-white transition-colors hover:translate-x-1 inline-block">API Reference</a></li>
-                                <li><a href="#" className="text-slate-400 hover:text-white transition-colors hover:translate-x-1 inline-block">Help Center</a></li>
-                                <li><a href="#" className="text-slate-400 hover:text-white transition-colors hover:translate-x-1 inline-block">Privacy Policy</a></li>
-                                <li><a href="#" className="text-slate-400 hover:text-white transition-colors hover:translate-x-1 inline-block">Terms of Service</a></li>
+                                <li><Link to="/documentation" className="text-slate-400 hover:text-white transition-colors hover:translate-x-1 inline-block">Documentation</Link></li>
+                                {/* <li><Link to="/api-reference" className="text-slate-400 hover:text-white transition-colors hover:translate-x-1 inline-block">API Reference</Link></li> */}
+                                <li><Link to="/help-center" className="text-slate-400 hover:text-white transition-colors hover:translate-x-1 inline-block">Help Center</Link></li>
+                                <li><Link to="/privacy-policy" className="text-slate-400 hover:text-white transition-colors hover:translate-x-1 inline-block">Privacy Policy</Link></li>
+                                <li><Link to="/terms-of-service" className="text-slate-400 hover:text-white transition-colors hover:translate-x-1 inline-block">Terms of Service</Link></li>
 
                             </ul>
                         </div>
@@ -1173,7 +1165,7 @@ export default function Landing() {
                                 {/* Replace this with your actual video URL */}
                                 <iframe
                                     className="w-full h-full"
-                                    src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1"
+                                    src=""
                                     title="Product Overview Video"
                                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                     allowFullScreen
