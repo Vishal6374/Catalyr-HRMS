@@ -296,16 +296,22 @@ export default function Dashboard() {
               </Card>
 
               <Card className="lg:col-span-2 shadow-sm border overflow-hidden">
-                <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2 font-bold"><Wallet className="w-4 h-4 text-emerald-600" />Attendance Volume</CardTitle></CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2 font-bold"><Clock className="w-4 h-4 text-emerald-600" />Work Hours Trend</CardTitle></CardHeader>
                 <CardContent>
                   <div className="h-[200px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={charts.attendanceTrend}>
-                        <XAxis dataKey="date" hide />
-                        <Tooltip />
-                        <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    {charts.workHoursTrend?.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={charts.workHoursTrend}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                          <XAxis dataKey="date" tickFormatter={(d) => format(new Date(d), 'dd')} fontSize={11} />
+                          <YAxis fontSize={11} />
+                          <Tooltip />
+                          <Bar dataKey="hours" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <EmptyState message="No work hours trend available" />
+                    )}
                   </div>
                 </CardContent>
               </Card>

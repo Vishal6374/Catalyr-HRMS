@@ -128,7 +128,8 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
                 currentBatch,
                 upcomingExits,
                 attendanceTrend,
-                leaveTypeDist
+                leaveTypeDist,
+                workHoursTrendRaw
             ] = await Promise.all([
                 User.count({ where: { status: 'active', role: { [Op.ne]: 'admin' } } }),
                 AttendanceLog.count({
@@ -162,24 +163,46 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
                 LeaveRequest.findAll({
                     attributes: ['leave_type', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
                     group: ['leave_type']
+                }),
+                AttendanceLog.findAll({
+                    where: {
+                        date: { [Op.gte]: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000) },
+                        status: { [Op.in]: ['present', 'half_day', 'on_leave', 'holiday', 'weekend'] }
+                    },
+                    attributes: ['date', [sequelize.fn('SUM', sequelize.col('work_hours')), 'total_hours']],
+                    group: ['date'],
+                    order: [['date', 'ASC']]
                 })
             ]);
 
             // Fill gaps in attendance trend (last 7 days)
             const filledAttendanceTrend = [];
+            const filledWorkHoursTrend = [];
             for (let i = 6; i >= 0; i--) {
                 const d = new Date(today);
                 d.setDate(d.getDate() - i);
                 const dateStr = d.toISOString().split('T')[0];
-                // attendanceTrend is an array of Sequelize models with dataValues or raw results
-                const match = (attendanceTrend as any[]).find(row => {
+
+                // Attendance Count Match
+                const attendanceMatch = (attendanceTrend as any[]).find(row => {
                     const rowDate = typeof row.date === 'string' ? row.date : row.get('date');
                     return rowDate === dateStr;
                 });
 
                 filledAttendanceTrend.push({
                     date: dateStr,
-                    count: match ? parseInt(match.dataValues?.count || match.get('count') || 0) : 0
+                    count: attendanceMatch ? parseInt(attendanceMatch.dataValues?.count || attendanceMatch.get('count') || 0) : 0
+                });
+
+                // Work Hours Match
+                const workHoursMatch = (workHoursTrendRaw as any[]).find(row => {
+                    const rowDate = typeof row.date === 'string' ? row.date : row.get('date');
+                    return rowDate === dateStr;
+                });
+
+                filledWorkHoursTrend.push({
+                    date: dateStr,
+                    hours: workHoursMatch ? parseFloat(workHoursMatch.dataValues?.total_hours || workHoursMatch.get('total_hours') || 0) : 0
                 });
             }
 
@@ -194,6 +217,7 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
                 },
                 charts: {
                     attendanceTrend: filledAttendanceTrend,
+                    workHoursTrend: filledWorkHoursTrend,
                     leaveTypeDist
                 }
             });
